@@ -26,14 +26,30 @@ export default function Navbar() {
     { label: "Visa Processing", href: "/visa", icon: FileCheck },
   ];
 
-  // Subscribe to Supabase Auth state changes
+  // Subscribe to Supabase Auth state changes & load display_name from database profile
   useEffect(() => {
     async function getInitialUser() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setIsLoggedIn(true);
         setUserEmail(user.email || "");
-        setUserName(user.user_metadata?.full_name || user.user_metadata?.display_name || user.email?.split("@")[0] || "Member");
+        
+        // Fetch full name from database profile
+        try {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name")
+            .eq("id", user.id)
+            .single();
+
+          if (profile && profile.display_name) {
+            setUserName(profile.display_name);
+          } else {
+            setUserName(user.user_metadata?.full_name || user.user_metadata?.display_name || user.email?.split("@")[0] || "Member");
+          }
+        } catch {
+          setUserName(user.user_metadata?.full_name || user.email?.split("@")[0] || "Member");
+        }
       } else {
         const savedEmail = localStorage.getItem("isbah_user_email");
         const hasCookie = document.cookie.includes("isbah_user_session");
@@ -49,11 +65,25 @@ export default function Navbar() {
 
     getInitialUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         setIsLoggedIn(true);
         setUserEmail(session.user.email || "");
-        setUserName(session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Member");
+        try {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name")
+            .eq("id", session.user.id)
+            .single();
+
+          if (profile && profile.display_name) {
+            setUserName(profile.display_name);
+          } else {
+            setUserName(session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Member");
+          }
+        } catch {
+          setUserName(session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Member");
+        }
       } else {
         const savedEmail = localStorage.getItem("isbah_user_email");
         const hasCookie = document.cookie.includes("isbah_user_session");
@@ -156,7 +186,7 @@ export default function Navbar() {
                 className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-1.5 pr-3 hover:bg-slate-50 transition-colors"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-white text-xs font-bold">
-                  {userName ? userName.slice(0, 2).toUpperCase() : "MR"}
+                  {userName ? userName.slice(0, 2).toUpperCase() : "CU"}
                 </div>
                 <span className="text-xs font-bold text-slate-800">{userName}</span>
                 <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
