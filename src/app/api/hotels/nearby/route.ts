@@ -1,5 +1,5 @@
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/client";
 
 // 24-Hour Cache Store for Google Places Nearby Search (key: "lat,lng,radius")
 const placesCache = new Map<string, { data: any[]; expiresAt: number }>();
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       // Update Supabase if hotel_id provided
       if (hotel_id && process.env.NEXT_PUBLIC_SUPABASE_URL) {
         try {
-          const supabase = createClient();
+          const supabase = await createServerSupabaseClient();
           await supabase.from("hotels").update({ nearby: cachedEntry.data }).eq("id", hotel_id);
         } catch (dbErr) {
           console.warn("Supabase nearby update error", dbErr);
@@ -137,7 +137,7 @@ export async function POST(request: Request) {
     // Update Supabase database if hotel_id is provided
     if (hotel_id && process.env.NEXT_PUBLIC_SUPABASE_URL) {
       try {
-        const supabase = createClient();
+        const supabase = await createServerSupabaseClient();
         await supabase
           .from("hotels")
           .update({ nearby: nearbyPlaces })

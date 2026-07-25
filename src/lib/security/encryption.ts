@@ -1,7 +1,14 @@
 import crypto from "crypto";
 
 const ALGORITHM = "aes-256-gcm";
-const SECRET_KEY = process.env.ENCRYPTION_SECRET_KEY || "isbah_travels_super_secret_32_byte_key_1234567890"; // Must be 32 bytes
+
+function getEncryptionKey(): Buffer {
+  const key = process.env.ENCRYPTION_SECRET_KEY;
+  if (!key || key === "isbah_travels_super_secret_32_byte_key_1234567890") {
+    console.warn("⚠️ ENCRYPTION_SECRET_KEY is not set or is using default! Set a secure 32+ char key in production.");
+  }
+  return crypto.createHash("sha256").update(key || "change-me-in-production").digest();
+}
 
 /**
  * Encrypts a sensitive string (e.g. Passport number, National ID) using AES-256-GCM.
@@ -9,7 +16,7 @@ const SECRET_KEY = process.env.ENCRYPTION_SECRET_KEY || "isbah_travels_super_sec
 export function encryptAES256GCM(text: string): { encryptedData: string; iv: string; authTag: string } {
   if (!text) return { encryptedData: "", iv: "", authTag: "" };
 
-  const key = crypto.createHash("sha256").update(SECRET_KEY).digest();
+  const key = getEncryptionKey();
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
@@ -31,7 +38,7 @@ export function decryptAES256GCM(encryptedData: string, iv: string, authTag: str
   if (!encryptedData || !iv || !authTag) return "";
 
   try {
-    const key = crypto.createHash("sha256").update(SECRET_KEY).digest();
+    const key = getEncryptionKey();
     const decipher = crypto.createDecipheriv(ALGORITHM, key, Buffer.from(iv, "hex"));
     decipher.setAuthTag(Buffer.from(authTag, "hex"));
 

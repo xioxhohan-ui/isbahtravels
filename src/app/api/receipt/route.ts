@@ -1,8 +1,5 @@
-import { NextResponse } from "next/server";
-import { renderToBuffer } from "@react-pdf/renderer";
-import React from "react";
-import { ReceiptDocument } from "@/lib/pdf/receipt-document";
 import { apiService } from "@/lib/services/api";
+import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -13,7 +10,12 @@ export async function GET(request: Request) {
   const booking = bookings.find((b) => b.id === bookingId) || bookings[0];
 
   try {
-    const pdfBuffer = await renderToBuffer(
+    // Dynamic import to avoid issues with React 19 + @react-pdf/renderer compatibility
+    const pdfModule = await import("@react-pdf/renderer");
+    const { ReceiptDocument } = await import("@/lib/pdf/receipt-document");
+    const React = await import("react");
+
+    const pdfBuffer = await pdfModule.renderToBuffer(
       React.createElement(ReceiptDocument, { booking }) as any
     );
 

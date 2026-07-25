@@ -82,6 +82,8 @@ CREATE TABLE IF NOT EXISTS public.flights (
   class TEXT NOT NULL DEFAULT 'economy' CHECK (class IN ('economy', 'business')),
   available_seats INTEGER NOT NULL DEFAULT 50,
   max_travelers INTEGER NOT NULL DEFAULT 9,
+  stops INTEGER DEFAULT 0,
+  logo_url TEXT,
   admin_created UUID REFERENCES public.profiles(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -102,6 +104,8 @@ CREATE TABLE IF NOT EXISTS public.hotels (
   facilities JSONB DEFAULT '{}'::jsonb,
   policies JSONB DEFAULT '{}'::jsonb,
   discount NUMERIC(5, 2) DEFAULT 0.0,
+  min_price NUMERIC(12, 2) DEFAULT 0,
+  rooms_count INTEGER DEFAULT 0,
   latitude NUMERIC(10, 7),
   longitude NUMERIC(10, 7),
   nearby JSONB DEFAULT '[]'::jsonb,
@@ -167,6 +171,10 @@ CREATE TABLE IF NOT EXISTS public.tours (
   refund_policy TEXT,
   latitude NUMERIC(10, 7),
   longitude NUMERIC(10, 7),
+  category TEXT CHECK (category IN ('Domestic', 'International', 'Umrah', 'Honeymoon', 'Adventure')),
+  rating NUMERIC(3, 2) DEFAULT 4.9,
+  reviews_count INTEGER DEFAULT 0,
+  discount NUMERIC(5, 2) DEFAULT 0.0,
   admin_created UUID REFERENCES public.profiles(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

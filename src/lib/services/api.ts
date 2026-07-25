@@ -1,6 +1,6 @@
+import { MOCK_BOOKINGS, MOCK_FLIGHTS, MOCK_HOTELS, MOCK_ROOMS, MOCK_TOURS, MOCK_VISAS } from "../mock-data";
 import { createClient } from "../supabase/client";
-import { MOCK_FLIGHTS, MOCK_HOTELS, MOCK_ROOMS, MOCK_TOURS, MOCK_VISAS, MOCK_BOOKINGS } from "../mock-data";
-import { Flight, Hotel, Room, Tour, Visa, Booking, VisaInquiry, TourInquiry } from "../types/database";
+import { Booking, Flight, Hotel, Room, Tour, TourInquiry, Visa, VisaInquiry } from "../types/database";
 
 const isSupabaseConfigured = () => {
   return (
@@ -11,12 +11,22 @@ const isSupabaseConfigured = () => {
   );
 };
 
+/**
+ * Returns a Supabase client instance.
+ * Uses the browser client by default (safe for both client and server components
+ * when called from client contexts). For server-only API routes, use
+ * createServerSupabaseClient directly.
+ */
+function getClient() {
+  return createClient();
+}
+
 export const apiService = {
   // FLIGHTS API
   async getFlights(filters?: { from?: string; to?: string; trip_type?: string; class?: string }): Promise<Flight[]> {
     if (isSupabaseConfigured()) {
       try {
-        const supabase = createClient();
+        const supabase = getClient();
         let query = supabase.from("flights").select("*");
         if (filters?.trip_type) query = query.eq("trip_type", filters.trip_type);
         if (filters?.class) query = query.eq("class", filters.class);
@@ -54,7 +64,7 @@ export const apiService = {
   async getHotels(filters?: { city?: string; star_rating?: number }): Promise<Hotel[]> {
     if (isSupabaseConfigured()) {
       try {
-        const supabase = createClient();
+        const supabase = getClient();
         let query = supabase.from("hotels").select("*");
         if (filters?.city) query = query.ilike("city", `%${filters.city}%`);
         if (filters?.star_rating) query = query.gte("star_rating", filters.star_rating);
@@ -84,7 +94,7 @@ export const apiService = {
   async getHotelRooms(hotelId: string): Promise<Room[]> {
     if (isSupabaseConfigured()) {
       try {
-        const supabase = createClient();
+        const supabase = getClient();
         const { data, error } = await supabase.from("rooms").select("*").eq("hotel_id", hotelId);
         if (!error && data && data.length > 0) return data as Room[];
       } catch (err) {
@@ -99,7 +109,7 @@ export const apiService = {
   async getTours(filters?: { category?: string; search?: string }): Promise<Tour[]> {
     if (isSupabaseConfigured()) {
       try {
-        const supabase = createClient();
+        const supabase = getClient();
         let query = supabase.from("tours").select("*");
         if (filters?.category) query = query.eq("category", filters.category);
         const { data, error } = await query;
@@ -129,7 +139,7 @@ export const apiService = {
   async getVisas(searchCountry?: string): Promise<Visa[]> {
     if (isSupabaseConfigured()) {
       try {
-        const supabase = createClient();
+        const supabase = getClient();
         let query = supabase.from("visas").select("*");
         if (searchCountry) query = query.ilike("country", `%${searchCountry}%`);
         const { data, error } = await query;
@@ -156,7 +166,7 @@ export const apiService = {
   async getBookings(): Promise<Booking[]> {
     if (isSupabaseConfigured()) {
       try {
-        const supabase = createClient();
+        const supabase = getClient();
         const { data, error } = await supabase.from("bookings").select("*").order("created_at", { ascending: false });
         if (!error && data) return data as Booking[];
       } catch (err) {
@@ -184,7 +194,7 @@ export const apiService = {
 
     if (isSupabaseConfigured()) {
       try {
-        const supabase = createClient();
+        const supabase = getClient();
         const { data, error } = await supabase.from("bookings").insert([newBooking]).select().single();
         if (!error && data) return data as Booking;
       } catch (err) {
@@ -200,7 +210,7 @@ export const apiService = {
   async submitVisaInquiry(inquiry: Omit<VisaInquiry, "id" | "status" | "created_at">): Promise<boolean> {
     if (isSupabaseConfigured()) {
       try {
-        const supabase = createClient();
+        const supabase = getClient();
         const { error } = await supabase.from("visa_inquiries").insert([{ ...inquiry, status: "new" }]);
         if (!error) return true;
       } catch (err) {
@@ -213,7 +223,7 @@ export const apiService = {
   async submitTourInquiry(inquiry: Omit<TourInquiry, "id" | "status" | "created_at">): Promise<boolean> {
     if (isSupabaseConfigured()) {
       try {
-        const supabase = createClient();
+        const supabase = getClient();
         const { error } = await supabase.from("tour_inquiries").insert([{ ...inquiry, status: "new" }]);
         if (!error) return true;
       } catch (err) {

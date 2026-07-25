@@ -1,18 +1,38 @@
-import Link from "next/link";
-import Image from "next/image";
-import HeroSearchTabs from "@/components/home/hero-search-tabs";
-import { apiService } from "@/lib/services/api";
-import { formatBDT } from "@/lib/utils";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Star, MapPin, Clock, ArrowRight, ShieldCheck, Award, HeartHandshake, CheckCircle2, Plane, Hotel, Compass, FileCheck } from "lucide-react";
+"use client";
 
-export default async function HomePage() {
-  const featuredTours = await apiService.getTours();
-  const topHotels = await apiService.getHotels();
-  const topFlights = await apiService.getFlights();
-  const topVisas = await apiService.getVisas();
+import HeroSearchTabs from "@/components/home/hero-search-tabs";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { apiService } from "@/lib/services/api";
+import { Hotel, Tour } from "@/lib/types/database";
+import { formatBDT } from "@/lib/utils";
+import { ArrowRight, Award, Clock, HeartHandshake, MapPin, ShieldCheck, Star } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+export default function HomePage() {
+  const [featuredTours, setFeaturedTours] = useState<Tour[]>([]);
+  const [topHotels, setTopHotels] = useState<Hotel[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [tours, hotels] = await Promise.all([
+          apiService.getTours(),
+          apiService.getHotels(),
+        ]);
+        setFeaturedTours(tours);
+        setTopHotels(hotels);
+      } catch (err) {
+        console.warn("Home page load error", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen space-y-16 pb-16 bg-white text-slate-900">
