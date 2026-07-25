@@ -13,27 +13,27 @@ export const AIRPORTS = [
 ];
 
 export const MOCK_PROFILE: Profile = {
-  id: "usr-demo",
-  email: "rahman@example.com",
-  phone: "+880 1711-223344",
-  display_name: "Mohammad Rahman",
-  photo_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
-  gender: "Male",
-  present_address: "House 14, Road 5, Block C, Banani, Dhaka 1213",
-  permanent_address: "Village: South Khulshi, Chittagong",
-  marital_status: "Married",
-  date_of_birth: "1990-05-15",
-  passport_country: "Bangladesh",
-  passport_number: "BN-98214309",
-  passport_expiry: "2031-10-20",
-  national_id: "19902692518000123",
-  nationality: "Bangladeshi",
-  emergency_contact: "+880 1819-000000 (Wife)",
-  religion: "Islam",
+  id: "",
+  email: "",
+  phone: "",
+  display_name: "",
+  photo_url: "",
+  gender: "",
+  present_address: "",
+  permanent_address: "",
+  marital_status: "",
+  date_of_birth: "",
+  passport_country: "",
+  passport_number: "",
+  passport_expiry: "",
+  national_id: "",
+  nationality: "",
+  emergency_contact: "",
+  religion: "",
   language_preference: "English",
   role: "user",
-  created_at: "2024-01-01T00:00:00Z",
-  updated_at: "2026-07-25T00:00:00Z",
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
 };
 
 export const MOCK_FLIGHTS: Flight[] = [
@@ -484,47 +484,6 @@ export const MOCK_VISAS: Visa[] = [
   },
 ];
 
-export const MOCK_BOOKINGS: Booking[] = [
-  {
-    id: "bk-1001",
-    user_id: "usr-demo",
-    booking_type: "tour",
-    reference_id: "tr-1",
-    details: {
-      title: "Cox's Bazar Beach & Inani Sunset Adventure",
-      travelers: 2,
-      travel_date: "2026-08-15",
-      lead_passenger: "Mohammad Rahman",
-      phone: "+880 1711-223344",
-      email: "rahman@example.com",
-    },
-    total_price: 17000,
-    currency: "BDT",
-    payment_status: "paid",
-    payment_details: {
-      method: "SSLCommerz (bKash)",
-      transaction_id: "SSL-BKASH-982143",
-      paid_at: "2026-07-25 10:30 AM",
-    },
-    booking_status: "confirmed",
-    created_at: "2026-07-25T10:30:00Z",
-    updated_at: "2026-07-25T10:30:00Z",
-  },
-];
+export const MOCK_BOOKINGS: Booking[] = [];
 
-export const MOCK_SAVED_ITEMS: SavedItem[] = [
-  {
-    id: "sv-1",
-    user_id: "usr-demo",
-    entity_type: "hotel",
-    entity_id: "ht-1",
-    created_at: "2026-07-20T12:00:00Z",
-  },
-  {
-    id: "sv-2",
-    user_id: "usr-demo",
-    entity_type: "tour",
-    entity_id: "tr-1",
-    created_at: "2026-07-21T14:00:00Z",
-  },
-];
+export const MOCK_SAVED_ITEMS: SavedItem[] = [];
