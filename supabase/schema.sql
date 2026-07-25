@@ -1,5 +1,5 @@
 -- =========================================================
--- ISBAH TRAVELS DATABASE SCHEMA (SUPABASE / POSTGRESQL)
+-- ISBAH TRAVELS SECURE DATABASE SCHEMA (SUPABASE / POSTGRESQL)
 -- =========================================================
 
 -- Enable Extensions
@@ -21,8 +21,10 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   date_of_birth DATE,
   passport_country TEXT,
   passport_number TEXT,
+  passport_number_iv TEXT,
   passport_expiry DATE,
   national_id TEXT,
+  national_id_iv TEXT,
   nationality TEXT,
   emergency_contact TEXT,
   religion TEXT,
@@ -32,7 +34,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Function & Trigger to create profile automatically on auth.users insert
+-- Trigger to create profile automatically on auth.users insert
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -262,7 +264,33 @@ CREATE TABLE IF NOT EXISTS public.saved_items (
 );
 
 -- =========================================================
--- INDEXES FOR OPTIMAL PERFORMANCE
+-- 13. AUDIT LOGS TABLE
+-- =========================================================
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  admin_id UUID REFERENCES public.profiles(id),
+  action TEXT NOT NULL,
+  table_name TEXT NOT NULL,
+  record_id TEXT,
+  old_data JSONB DEFAULT '{}'::jsonb,
+  new_data JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- =========================================================
+-- 14. USER 2FA TABLE
+-- =========================================================
+CREATE TABLE IF NOT EXISTS public.user_2fa (
+  user_id UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
+  secret TEXT NOT NULL,
+  enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  backup_codes JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- =========================================================
+-- INDEXES FOR OPTIMAL PERFORMANCE & SECURITY
 -- =========================================================
 CREATE INDEX IF NOT EXISTS idx_hotels_city ON public.hotels(city);
 CREATE INDEX IF NOT EXISTS idx_rooms_hotel_id ON public.rooms(hotel_id);
@@ -273,6 +301,10 @@ CREATE INDEX IF NOT EXISTS idx_bookings_status ON public.bookings(booking_status
 CREATE INDEX IF NOT EXISTS idx_saved_items_user ON public.saved_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_hotel_reviews_hotel ON public.hotel_reviews(hotel_id);
 CREATE INDEX IF NOT EXISTS idx_tour_reviews_tour ON public.tour_reviews(tour_id);
+CREATE INDEX IF NOT EXISTS idx_flights_segments ON public.flights USING gin (segments);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_admin ON public.audit_logs(admin_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_table ON public.audit_logs(table_name);
+CREATE INDEX IF NOT EXISTS idx_user_2fa_enabled ON public.user_2fa(enabled);
 
 -- =========================================================
 -- ENABLE ROW LEVEL SECURITY (RLS)
@@ -289,6 +321,8 @@ ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.visa_inquiries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tour_inquiries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.saved_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_2fa ENABLE ROW LEVEL SECURITY;
 
 -- =========================================================
 -- RLS POLICIES
@@ -433,3 +467,14 @@ CREATE POLICY "Insert own saved items" ON public.saved_items FOR INSERT WITH CHE
 
 DROP POLICY IF EXISTS "Delete own saved items" ON public.saved_items;
 CREATE POLICY "Delete own saved items" ON public.saved_items FOR DELETE USING ( (select auth.uid()) = user_id );
+
+-- AUDIT LOGS
+DROP POLICY IF EXISTS "Admins select audit_logs" ON public.audit_logs;
+CREATE POLICY "Admins select audit_logs" ON public.audit_logs FOR SELECT USING (public.is_admin());
+
+DROP POLICY IF EXISTS "Admins insert audit_logs" ON public.audit_logs;
+CREATE POLICY "Admins insert audit_logs" ON public.audit_logs FOR INSERT WITH CHECK (public.is_admin());
+
+-- USER 2FA
+DROP POLICY IF EXISTS "Users manage own 2FA" ON public.user_2fa;
+CREATE POLICY "Users manage own 2FA" ON public.user_2fa FOR ALL USING ( (select auth.uid()) = user_id OR public.is_admin() );
