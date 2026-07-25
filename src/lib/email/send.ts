@@ -14,7 +14,10 @@ export interface SendEmailResult {
   error?: string;
 }
 
-const FROM_ADDRESS = "Isbah Travels <noreply@isbahtravels.com>";
+// Resend's onboarding domain works without custom domain verification.
+// Once isbahtravels.com is verified in your Resend dashboard,
+// change this back to: "Isbah Travels <noreply@isbahtravels.com>"
+const FROM_ADDRESS = "Isbah Travels <onboarding@resend.dev>";
 
 /**
  * Send transactional email via Resend REST API.
