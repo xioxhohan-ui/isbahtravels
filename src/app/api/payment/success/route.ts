@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { apiService } from "@/lib/services/api";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { sendBookingConfirmedEmail } from "@/lib/email/send";
 
 // Verify HMAC-SHA256 signature from SSLCommerz callback payload
 function verifyHmacSignature(payload: Record<string, string>, storePass: string): boolean {
@@ -23,11 +25,27 @@ function verifyHmacSignature(payload: Record<string, string>, storePass: string)
   return computedHash.toLowerCase() === verifySign.toLowerCase();
 }
 
+async function getSupabaseServer() {
+  const cookieStore = await cookies();
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll(); },
+        setAll(cookiesToSet) {
+          try { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); } catch {}
+        },
+      },
+    }
+  );
+}
+
 export async function POST(request: Request) {
   try {
     const url = new URL(request.url);
-    const booking_id = url.searchParams.get("booking_id") || "bk-1001";
-    
+    const booking_id = url.searchParams.get("booking_id") || "";
+
     // Parse form data from SSLCommerz callback
     const formData = await request.formData();
     const payload: Record<string, string> = {};
@@ -37,7 +55,7 @@ export async function POST(request: Request) {
 
     const tran_id = payload["tran_id"] || `SSL-${Date.now()}`;
     const amount = payload["amount"] || "0";
-    const card_type = payload["card_type"] || "SSLCommerz bKash/Card";
+    const card_type = payload["card_type"] || "SSLCommerz";
     const storePass = process.env.SSLCOMMERZ_STORE_PASSWORD || "isbah_store_pass";
 
     // 1. Verify HMAC Signature
@@ -47,21 +65,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid payment signature" }, { status: 400 });
     }
 
+    const supabase = await getSupabaseServer();
+
     // 2. Validate Amount Against Stored Booking
-    const bookings = await apiService.getBookings();
-    const existingBooking = bookings.find((b) => b.id === booking_id);
+    let existingBooking: any = null;
+    if (booking_id) {
+      const { data } = await supabase.from("bookings").select("*").eq("id", booking_id).single();
+      existingBooking = data;
+    }
 
     if (existingBooking && Number(amount) > 0 && Number(amount) < existingBooking.total_price * 0.9) {
-      console.error(`Price Tampering Detected! Callback: ${amount}, Expected: ${existingBooking.total_price}`);
+      console.error(`Price Tampering! Callback: ${amount}, Expected: ${existingBooking.total_price}`);
       return NextResponse.json({ error: "Payment amount mismatch" }, { status: 400 });
     }
 
     const receiptUrl = `/api/receipt?booking_id=${booking_id}`;
 
-    // Update booking in Supabase / state
+    // 3. Update booking status in Supabase
     if (booking_id) {
-      await apiService.createBooking({
-        id: booking_id,
+      await supabase.from("bookings").update({
         payment_status: "paid",
         booking_status: "confirmed",
         payment_details: {
@@ -72,14 +94,38 @@ export async function POST(request: Request) {
           paid_amount: amount,
           paid_at: new Date().toISOString(),
         },
-      });
+        updated_at: new Date().toISOString(),
+      }).eq("id", booking_id);
+    }
+
+    // 4. Send "Payment Confirmed" email to user
+    if (existingBooking) {
+      // Fetch user email from profiles
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("email, display_name")
+        .eq("id", existingBooking.user_id)
+        .single();
+
+      if (profile?.email) {
+        await sendBookingConfirmedEmail({
+          user_name: profile.display_name || "Valued Customer",
+          user_email: profile.email,
+          booking_id,
+          booking_type: existingBooking.booking_type,
+          booking_title: existingBooking.details?.title || existingBooking.details?.airline || `${existingBooking.booking_type} Booking`,
+          total_price: existingBooking.total_price,
+          transaction_id: tran_id,
+          receipt_url: receiptUrl,
+        });
+      }
     }
 
     const redirectUrl = new URL(`/dashboard?status=paid&booking_id=${booking_id}&tran_id=${tran_id}`, request.url);
     return NextResponse.redirect(redirectUrl, { status: 303 });
   } catch (err) {
     const url = new URL(request.url);
-    const booking_id = url.searchParams.get("booking_id") || "bk-1001";
+    const booking_id = url.searchParams.get("booking_id") || "";
     const redirectUrl = new URL(`/dashboard?status=paid&booking_id=${booking_id}`, request.url);
     return NextResponse.redirect(redirectUrl, { status: 303 });
   }
@@ -87,9 +133,8 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const booking_id = url.searchParams.get("booking_id") || "bk-1001";
+  const booking_id = url.searchParams.get("booking_id") || "";
   const tran_id = url.searchParams.get("tran_id") || `SSL-${Date.now()}`;
-  
   const redirectUrl = new URL(`/dashboard?status=paid&booking_id=${booking_id}&tran_id=${tran_id}`, request.url);
   return NextResponse.redirect(redirectUrl);
 }

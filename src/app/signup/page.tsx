@@ -72,6 +72,13 @@ function SignUpContent() {
           updated_at: new Date().toISOString(),
         });
 
+        // Send welcome email (fire-and-forget, non-blocking)
+        fetch("/api/v1/email/welcome", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_name: displayName, user_email: email }),
+        }).catch(() => {});
+
         // Set session fallback
         document.cookie = `isbah_user_session=${encodeURIComponent(email)}; path=/; max-age=86400`;
         localStorage.setItem("isbah_user_email", email);
