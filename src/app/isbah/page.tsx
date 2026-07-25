@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import { Compass, Lock, User, ShieldCheck, ArrowRight, AlertCircle, Loader2, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -53,19 +52,11 @@ export default function AdminLoginPage() {
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 text-slate-100">
       
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
-        className="w-full max-w-md bg-slate-900 rounded-3xl border border-slate-800 p-8 shadow-2xl space-y-6"
-      >
+      <div className="w-full max-w-md bg-slate-900 rounded-3xl border border-slate-800 p-8 shadow-2xl space-y-6 animate-scale-in">
         <div className="text-center space-y-2">
-          <motion.div
-            whileHover={{ scale: 1.05, rotate: 5 }}
-            className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-lg"
-          >
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-lg hover:scale-105 transition-transform">
             <Compass className="h-7 w-7" />
-          </motion.div>
+          </div>
           <h1 className="font-outfit text-2xl font-black text-white tracking-tight">
             ISBAH <span className="text-emerald-400">ADMIN</span>
           </h1>
@@ -75,25 +66,18 @@ export default function AdminLoginPage() {
         </div>
 
         {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-3.5 rounded-2xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs font-bold flex items-center gap-2"
-          >
+          <div className="p-3.5 rounded-2xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs font-bold flex items-center gap-2 animate-fade-in">
             <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
             <span>{error}</span>
-          </motion.div>
+          </div>
         )}
 
-        <AnimatePresence mode="wait">
+        <div>
           {step === "credentials" ? (
-            <motion.form
+            <form
               key="credentials"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 10 }}
               onSubmit={handleCredentialsSubmit}
-              className="space-y-4"
+              className="space-y-4 animate-fade-in"
             >
               <div>
                 <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">
@@ -129,7 +113,7 @@ export default function AdminLoginPage() {
                 </div>
               </div>
 
-              <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+              <div className="hover:scale-[1.01] active:scale-[0.99] transition-transform">
                 <Button
                   type="submit"
                   disabled={loading}
@@ -148,16 +132,13 @@ export default function AdminLoginPage() {
                     </>
                   )}
                 </Button>
-              </motion.div>
-            </motion.form>
+              </div>
+            </form>
           ) : (
-            <motion.form
+            <form
               key="totp"
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
               onSubmit={handleTotpSubmit}
-              className="space-y-4 text-xs"
+              className="space-y-4 text-xs animate-fade-in"
             >
               <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-800/60 text-emerald-300 space-y-1">
                 <p className="font-bold flex items-center gap-1.5 text-xs">
@@ -187,7 +168,7 @@ export default function AdminLoginPage() {
                 </div>
               </div>
 
-              <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+              <div className="hover:scale-[1.01] active:scale-[0.99] transition-transform">
                 <Button
                   type="submit"
                   disabled={loading}
@@ -206,7 +187,7 @@ export default function AdminLoginPage() {
                     </>
                   )}
                 </Button>
-              </motion.div>
+              </div>
 
               <button
                 type="button"
@@ -215,9 +196,9 @@ export default function AdminLoginPage() {
               >
                 Back to Username & Password
               </button>
-            </motion.form>
+            </form>
           )}
-        </AnimatePresence>
+        </div>
 
         <div className="pt-3 border-t border-slate-800 text-center">
           <p className="text-[10px] font-bold text-slate-500 flex items-center justify-center gap-1">
@@ -226,7 +207,7 @@ export default function AdminLoginPage() {
           </p>
         </div>
 
-      </motion.div>
+      </div>
     </div>
   );
 }

@@ -9,8 +9,14 @@ import { formatBDT } from "@/lib/utils";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import Image from "next/image";
+import dynamic from "next/dynamic";
 import { MapPin, Star, Filter, ArrowRight, Tag } from "lucide-react";
-import GoogleMapView from "@/components/maps/google-map-view";
+
+const GoogleMapView = dynamic(() => import("@/components/maps/google-map-view"), {
+  ssr: false,
+  loading: () => <div className="h-72 w-full rounded-3xl bg-slate-100 skeleton border border-slate-200" />,
+});
 
 function HotelsContent() {
   const searchParams = useSearchParams();
@@ -158,10 +164,12 @@ function HotelsContent() {
                 className="overflow-hidden flex flex-col border border-slate-200 bg-white hover:shadow-md transition-shadow"
               >
                 <div className="relative h-48 w-full overflow-hidden bg-slate-100">
-                  <img
+                  <Image
                     src={hotel.images[0]}
                     alt={hotel.name}
-                    className="h-full w-full object-cover"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover"
                   />
                   <div className="absolute top-3 left-3 bg-white/90 px-2.5 py-1 rounded-lg text-slate-900 text-xs font-bold border border-slate-200 flex items-center gap-1">
                     <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />

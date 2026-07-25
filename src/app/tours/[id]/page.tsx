@@ -6,9 +6,15 @@ import { apiService } from "@/lib/services/api";
 import { Tour } from "@/lib/types/database";
 import { formatBDT } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import dynamic from "next/dynamic";
 import { Badge } from "@/components/ui/badge";
-import GoogleMapView from "@/components/maps/google-map-view";
 import { Clock, MapPin, Star, CheckCircle, XCircle, Calendar, Users, PhoneCall, ShieldCheck, ArrowRight } from "lucide-react";
+
+const GoogleMapView = dynamic(() => import("@/components/maps/google-map-view"), {
+  ssr: false,
+  loading: () => <div className="h-72 w-full rounded-3xl bg-slate-100 skeleton border border-slate-200" />,
+});
 
 export default function TourDetailPage() {
   const params = useParams();
@@ -115,10 +121,13 @@ export default function TourDetailPage() {
 
       {/* Main Image Banner */}
       <div className="relative h-96 sm:h-[450px] w-full overflow-hidden rounded-3xl border border-slate-200 shadow-xl bg-slate-900">
-        <img
+        <Image
           src={tour.images[0]}
           alt={tour.title}
-          className="h-full w-full object-cover"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover"
         />
       </div>
 

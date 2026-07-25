@@ -1,19 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { Compass, Home, Search, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
     <div className="min-h-[80vh] bg-slate-50 flex items-center justify-center p-4 text-slate-900">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
-        className="w-full max-w-md bg-white rounded-3xl border border-slate-200 p-8 shadow-xl text-center space-y-6"
-      >
+      <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 p-8 shadow-xl text-center space-y-6 animate-scale-in">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-xs">
           <Compass className="h-8 w-8 text-emerald-600" />
         </div>
@@ -42,7 +36,7 @@ export default function NotFound() {
             </Button>
           </Link>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

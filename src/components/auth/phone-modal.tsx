@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Phone, ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -54,15 +53,8 @@ export function PhoneModal({ isOpen, userId, userEmail, onComplete }: PhoneModal
   };
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className="w-full max-w-md bg-white rounded-3xl p-8 shadow-2xl border border-slate-100 text-slate-900 space-y-6"
-        >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-md bg-white rounded-3xl p-8 shadow-2xl border border-slate-100 text-slate-900 space-y-6 animate-scale-in">
           <div className="text-center space-y-2">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100">
               <Phone className="h-7 w-7" />
@@ -125,8 +117,7 @@ export function PhoneModal({ isOpen, userId, userEmail, onComplete }: PhoneModal
               <span>Your phone number is kept private & strictly secured</span>
             </p>
           </div>
-        </motion.div>
       </div>
-    </AnimatePresence>
+    </div>
   );
 }

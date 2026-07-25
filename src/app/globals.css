@@ -1,27 +1,87 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────
+   SYSTEM FONT STACK
+   Looks like Inter on macOS/iOS, Segoe UI on Windows,
+   Roboto on Android — zero external download
+   ───────────────────────────────────────────── */
 :root {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-display: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI Semibold", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+
+  /* Design tokens */
   --primary-navy: #0A192F;
   --secondary-gold: #F7C948;
   --bg-offwhite: #F8F9FA;
-  --font-inter: 'Inter', sans-serif;
-  --font-outfit: 'Outfit', sans-serif;
 }
 
 html, body {
   background-color: var(--bg-offwhite);
   color: #0f172a;
-  font-family: var(--font-inter), sans-serif;
-  scroll-behavior: smooth;
+  font-family: var(--font-sans);
+  /* Removed scroll-behavior: smooth — causes layout thrashing on scroll */
 }
 
-h1, h2, h3, h4, .font-outfit {
-  font-family: var(--font-outfit), var(--font-inter), sans-serif;
+/* Display headings use slightly bolder system variant */
+h1, h2, h3, h4, .font-outfit, .font-display {
+  font-family: var(--font-display);
 }
 
-/* Premium Card Lift & Border Glow Micro-Interactions */
+/* Tailwind custom utility */
+.bg-offwhite { background-color: var(--bg-offwhite); }
+
+
+/* ─────────────────────────────────────────────
+   GPU-ACCELERATED CSS ANIMATIONS
+   Only uses transform + opacity — no layout thrashing
+   will-change promotes layer to GPU compositor
+   ───────────────────────────────────────────── */
+
+/* Replaces framer-motion initial:{y:15,opacity:0} → animate:{y:0,opacity:1} */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Staggered animation utilities — replaces motion delay props */
+.animate-fade-up   { animation: fade-up   0.35s cubic-bezier(0.22,1,0.36,1) both; }
+.animate-fade-in   { animation: fade-in   0.3s  ease both; }
+.animate-scale-in  { animation: scale-in  0.3s  cubic-bezier(0.22,1,0.36,1) both; }
+.animate-slide-down{ animation: slide-down 0.3s cubic-bezier(0.22,1,0.36,1) both; }
+
+/* Stagger delays for list items */
+.delay-0   { animation-delay: 0ms; }
+.delay-1   { animation-delay: 60ms; }
+.delay-2   { animation-delay: 120ms; }
+.delay-3   { animation-delay: 180ms; }
+.delay-4   { animation-delay: 240ms; }
+
+
+/* ─────────────────────────────────────────────
+   CARD HOVER MICRO-INTERACTIONS
+   GPU-only: transform + box-shadow (compositor layer)
+   will-change pre-promotes to GPU compositor
+   ───────────────────────────────────────────── */
 .card-glow {
-  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  will-change: transform;
+  contain: layout style;
+  transition: transform 0.22s cubic-bezier(0.22,1,0.36,1),
+              box-shadow 0.22s ease,
+              border-color 0.22s ease;
 }
 .card-glow:hover {
   transform: translateY(-4px);
@@ -29,12 +89,16 @@ h1, h2, h3, h4, .font-outfit {
   border-color: rgba(247, 201, 72, 0.5);
 }
 
-/* Premium Gold Accent Button */
+/* ─────────────────────────────────────────────
+   PREMIUM GOLD BUTTON
+   Uses transform only — GPU composited
+   ───────────────────────────────────────────── */
 .btn-gold {
   background: linear-gradient(135deg, #F7C948 0%, #E5B229 100%);
   color: #0A192F;
   font-weight: 800;
-  transition: all 0.2s ease;
+  will-change: transform;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .btn-gold:hover {
   transform: scale(1.02);
@@ -44,11 +108,40 @@ h1, h2, h3, h4, .font-outfit {
   transform: scale(0.98);
 }
 
-/* Hide scrollbar utility */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
+
+/* ─────────────────────────────────────────────
+   SHIMMER SKELETON LOADER
+   GPU: background-position animation only
+   ───────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
 }
+.skeleton {
+  background: linear-gradient(90deg,
+    #f1f5f9 25%,
+    #e2e8f0 50%,
+    #f1f5f9 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+
+/* ─────────────────────────────────────────────
+   UTILITIES
+   ───────────────────────────────────────────── */
+
+/* Hide scrollbar (mobile horizontal scroll) */
+.no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Smooth focus ring — accessibility */
+:focus-visible {
+  outline: 2px solid var(--secondary-gold);
+  outline-offset: 2px;
+  border-radius: 4px;
 }

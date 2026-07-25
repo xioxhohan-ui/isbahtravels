@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { apiService } from "@/lib/services/api";
 import { Visa } from "@/lib/types/database";
 import { formatBDT } from "@/lib/utils";
@@ -78,7 +79,7 @@ function VisaContent() {
                 : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
             }`}
           >
-            {visa.flag_url && <img src={visa.flag_url} alt={visa.country} className="h-3.5 w-5 object-cover rounded shadow-xs" />}
+            {visa.flag_url && <Image src={visa.flag_url} alt={visa.country} width={20} height={14} className="h-3.5 w-5 object-cover rounded shadow-xs" />}
             <span>{visa.country}</span>
           </button>
         ))}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import HeroSearchTabs from "@/components/home/hero-search-tabs";
 import { apiService } from "@/lib/services/api";
 import { formatBDT } from "@/lib/utils";
@@ -83,10 +84,12 @@ export default async function HomePage() {
           {featuredTours.slice(0, 3).map((tour) => (
             <Card key={tour.id} className="overflow-hidden flex flex-col border border-slate-200 bg-white hover:shadow-lg transition-shadow">
               <div className="relative h-48 w-full overflow-hidden bg-slate-100">
-                <img
+                <Image
                   src={tour.images[0]}
                   alt={tour.title}
-                  className="h-full w-full object-cover"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                  className="object-cover"
                 />
                 <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-lg text-slate-900 text-xs font-bold border border-slate-200 shadow-xs">
                   {tour.category || "Tour"}
@@ -157,7 +160,7 @@ export default async function HomePage() {
           {topHotels.slice(0, 3).map((hotel) => (
             <Card key={hotel.id} className="overflow-hidden flex flex-col border border-slate-200 bg-white hover:shadow-lg transition-shadow">
               <div className="relative h-48 w-full overflow-hidden bg-slate-100">
-                <img src={hotel.images[0]} alt={hotel.name} className="h-full w-full object-cover" />
+                <Image src={hotel.images[0]} alt={hotel.name} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" />
                 <div className="absolute top-3 left-3 bg-white/90 px-2.5 py-1 rounded-lg text-slate-900 text-xs font-bold border border-slate-200">
                   {hotel.star_rating} Star Hotel
                 </div>

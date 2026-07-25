@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { apiService } from "@/lib/services/api";
 import { Tour } from "@/lib/types/database";
 import { formatBDT } from "@/lib/utils";
@@ -178,10 +179,12 @@ function ToursContent() {
             filteredTours.map((tour) => (
               <Card key={tour.id} className="overflow-hidden flex flex-col border border-slate-200 bg-white hover:shadow-md transition-shadow">
                 <div className="relative h-48 w-full overflow-hidden bg-slate-100">
-                  <img
+                  <Image
                     src={tour.images[0]}
                     alt={tour.title}
-                    className="h-full w-full object-cover"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover"
                   />
                   <div className="absolute top-3 left-3 bg-white/90 px-2.5 py-1 rounded-lg text-slate-900 text-xs font-bold border border-slate-200">
                     {tour.category || "Tour"}

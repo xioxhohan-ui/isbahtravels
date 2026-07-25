@@ -8,8 +8,14 @@ import { MOCK_HOTEL_REVIEWS } from "@/lib/mock-data";
 import { formatBDT } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import Image from "next/image";
+import dynamic from "next/dynamic";
 import { Star, MapPin, CheckCircle, ShieldCheck, Users, BedDouble, ChevronLeft, ChevronRight, MessageSquare, Clock, AlertCircle } from "lucide-react";
-import GoogleMapView from "@/components/maps/google-map-view";
+
+const GoogleMapView = dynamic(() => import("@/components/maps/google-map-view"), {
+  ssr: false,
+  loading: () => <div className="h-72 w-full rounded-3xl bg-slate-100 skeleton border border-slate-200" />,
+});
 
 export default function HotelDetailPage() {
   const params = useParams();
@@ -102,10 +108,13 @@ export default function HotelDetailPage() {
 
       {/* Auto-Slide Image Carousel */}
       <div className="relative h-80 sm:h-[420px] w-full overflow-hidden rounded-3xl border border-slate-200 shadow-md bg-slate-900 group">
-        <img
+        <Image
           src={hotel.images[activeImageIndex] || hotel.images[0]}
           alt={hotel.name}
-          className="h-full w-full object-cover transition-opacity duration-700"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover transition-opacity duration-700"
         />
 
         {/* Carousel controls */}

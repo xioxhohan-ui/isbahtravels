@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { Compass, Mail, Lock, ArrowRight, ShieldCheck, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -128,20 +127,12 @@ function SignInContent() {
     <div className="min-h-[85vh] bg-slate-50 flex items-center justify-center p-4 text-slate-900">
       
       {/* Animated Sign In Form Card */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 25 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
-        className="w-full max-w-md bg-white rounded-3xl border border-slate-200 p-8 shadow-xl space-y-6"
-      >
+      <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 p-8 shadow-xl space-y-6 animate-scale-in">
         {/* Brand & Heading */}
         <div className="text-center space-y-2">
-          <motion.div
-            whileHover={{ rotate: 10, scale: 1.05 }}
-            className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm"
-          >
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm hover:scale-105 transition-transform">
             <Compass className="h-7 w-7 text-emerald-400" />
-          </motion.div>
+          </div>
           <h1 className="font-outfit text-2xl font-black text-slate-900">Sign In to Isbah Travels</h1>
           <p className="text-xs text-slate-500 font-semibold">
             Mandatory account sign in required to manage bookings & e-tickets.
@@ -149,18 +140,14 @@ function SignInContent() {
         </div>
 
         {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2"
-          >
+          <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2 animate-fade-in">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
-          </motion.div>
+          </div>
         )}
 
         {/* Google OAuth Button */}
-        <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+        <div className="hover:scale-[1.01] active:scale-[0.99] transition-transform">
           <Button
             type="button"
             variant="outline"
@@ -192,7 +179,7 @@ function SignInContent() {
             )}
             <span>Continue with Google</span>
           </Button>
-        </motion.div>
+        </div>
 
         {/* Divider */}
         <div className="relative flex items-center justify-center">
@@ -238,7 +225,7 @@ function SignInContent() {
             </div>
           </div>
 
-          <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>
+          <div className="hover:scale-[1.01] active:scale-[0.99] transition-transform">
             <Button
               type="submit"
               disabled={loading}
@@ -257,7 +244,7 @@ function SignInContent() {
                 </>
               )}
             </Button>
-          </motion.div>
+          </div>
         </form>
 
         {/* Footer */}
@@ -277,7 +264,7 @@ function SignInContent() {
             <span>256-bit Encrypted Secure Authentication</span>
           </p>
         </div>
-      </motion.div>
+      </div>
 
       {/* Mandatory Phone Collection Modal */}
       <PhoneModal

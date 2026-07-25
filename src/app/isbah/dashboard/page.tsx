@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { formatBDT } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -165,15 +164,12 @@ export default function AdminDashboardPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {cards.map((card) => {
+        {cards.map((card, idx) => {
           const Icon = card.icon;
           return (
-            <motion.div
+            <div
               key={card.label}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: card.delay }}
-              className="p-5 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-2 hover:shadow-md transition-all"
+              className={`p-5 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-2 hover:shadow-md transition-all animate-fade-up delay-${idx}`}
             >
               <div className="flex items-center justify-between text-slate-500">
                 <span className="text-[10px] font-extrabold uppercase tracking-wider">{card.label}</span>
@@ -191,7 +187,7 @@ export default function AdminDashboardPage() {
               <p className={`text-[11px] font-bold flex items-center gap-0.5 ${card.subtextClass}`}>
                 {card.suffix}{card.subtext}
               </p>
-            </motion.div>
+            </div>
           );
         })}
       </div>

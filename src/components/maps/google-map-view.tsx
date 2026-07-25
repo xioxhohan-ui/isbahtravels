@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { MapPin, Navigation, ExternalLink, Compass } from "lucide-react";
 
 interface NearbyPlace {
@@ -91,12 +90,9 @@ export default function GoogleMapView({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {nearby.map((place, idx) => (
-              <motion.div
+              <div
                 key={idx}
-                initial={{ opacity: 0, y: -15, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.3, delay: idx * 0.05, ease: "easeOut" }}
-                className="flex items-center justify-between rounded-2xl bg-slate-50 p-3 border border-slate-200/80 text-xs hover:bg-slate-100 transition-colors shadow-2xs"
+                className="flex items-center justify-between rounded-2xl bg-slate-50 p-3 border border-slate-200/80 text-xs hover:bg-slate-100 transition-colors shadow-2xs animate-scale-in"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white border border-slate-200 text-emerald-700 font-extrabold text-[10px] shadow-2xs">
@@ -110,7 +106,7 @@ export default function GoogleMapView({
                 <span className="text-[10px] font-extrabold text-emerald-700 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-2xs">
                   {place.distance}
                 </span>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { apiService } from "@/lib/services/api";
 import { Visa } from "@/lib/types/database";
 import { formatBDT } from "@/lib/utils";
@@ -107,7 +108,7 @@ export default function AdminVisasPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold text-slate-900 text-base">{visa.country}</h3>
-                  {visa.flag_url && <img src={visa.flag_url} alt={visa.country} className="h-4 w-6 object-cover rounded shadow-xs" />}
+                  {visa.flag_url && <Image src={visa.flag_url} alt={visa.country} width={24} height={16} className="h-4 w-6 object-cover rounded shadow-xs" />}
                 </div>
 
                 <Badge variant="outline" className="text-[10px] font-bold">{visa.visa_type}</Badge>
