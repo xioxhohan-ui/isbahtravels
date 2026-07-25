@@ -1,5 +1,6 @@
 // src/lib/email/send.ts
 // Resend API email sender — pure REST, no npm package needed
+import { createServerClient } from "@supabase/ssr";
 
 export interface SendEmailOptions {
   to: string;
@@ -58,7 +59,26 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendEmailRes
     }
 
     const data = await response.json();
-    return { success: true, id: data.id };
+    const result = { success: true, id: data.id };
+
+    // Log sent email to Supabase email_logs table (non-blocking)
+    try {
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { cookies: { getAll: () => [], setAll: () => {} } }
+      );
+      await supabase.from("email_logs").insert({
+        to_email: options.to,
+        subject: options.subject,
+        email_type: (options as any).email_type || "general",
+        booking_id: (options as any).booking_id || null,
+        status: "sent",
+        sent_at: new Date().toISOString(),
+      });
+    } catch (_) { /* non-fatal */ }
+
+    return result;
   } catch (err: any) {
     console.error("Email send error:", err);
     return { success: false, error: err.message };
@@ -83,7 +103,8 @@ export async function sendWelcomeEmail(data: WelcomeEmailData): Promise<SendEmai
     to: data.user_email,
     subject: "Welcome to Isbah Travels — Your Account is Ready ✈️",
     html: welcomeEmailTemplate(data),
-  });
+    email_type: "welcome",
+  } as any);
 }
 
 export async function sendBookingConfirmedEmail(data: BookingConfirmedEmailData): Promise<SendEmailResult> {
@@ -91,7 +112,9 @@ export async function sendBookingConfirmedEmail(data: BookingConfirmedEmailData)
     to: data.user_email,
     subject: `Booking Confirmed — #${data.booking_id} | Isbah Travels ✅`,
     html: bookingConfirmedEmailTemplate(data),
-  });
+    email_type: "payment_confirmed",
+    booking_id: data.booking_id,
+  } as any);
 }
 
 export async function sendPaymentFailedEmail(data: PaymentFailedEmailData): Promise<SendEmailResult> {
@@ -99,7 +122,9 @@ export async function sendPaymentFailedEmail(data: PaymentFailedEmailData): Prom
     to: data.user_email,
     subject: `Payment Failed — Booking #${data.booking_id} | Isbah Travels ⚠️`,
     html: paymentFailedEmailTemplate(data),
-  });
+    email_type: "payment_failed",
+    booking_id: data.booking_id,
+  } as any);
 }
 
 export async function sendBookingCancelledEmail(data: PaymentFailedEmailData): Promise<SendEmailResult> {
@@ -107,7 +132,9 @@ export async function sendBookingCancelledEmail(data: PaymentFailedEmailData): P
     to: data.user_email,
     subject: `Booking Cancelled — #${data.booking_id} | Isbah Travels`,
     html: bookingCancelledEmailTemplate(data),
-  });
+    email_type: "booking_cancelled",
+    booking_id: data.booking_id,
+  } as any);
 }
 
 export async function sendBookingStatusUpdateEmail(data: BookingStatusUpdateEmailData): Promise<SendEmailResult> {
@@ -115,5 +142,7 @@ export async function sendBookingStatusUpdateEmail(data: BookingStatusUpdateEmai
     to: data.user_email,
     subject: `Booking Status Update — #${data.booking_id} | Isbah Travels`,
     html: bookingStatusUpdateEmailTemplate(data),
-  });
+    email_type: "status_update",
+    booking_id: data.booking_id,
+  } as any);
 }

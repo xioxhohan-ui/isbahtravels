@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
     // 1. Create or retrieve booking entry
     const booking = await apiService.createBooking({
-      user_id: user_id || "usr-demo",
+      user_id: user_id || null,
       booking_type: booking_type || "tour",
       reference_id: reference_id,
       total_price: Number(total_price),

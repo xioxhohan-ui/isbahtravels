@@ -2,10 +2,11 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { formatBDT } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CreditCard, AlertCircle, ShieldCheck } from "lucide-react";
+import { CreditCard, AlertCircle, ShieldCheck, Loader2 } from "lucide-react";
 
 function CheckoutContent() {
   const searchParams = useSearchParams();
@@ -14,34 +15,75 @@ function CheckoutContent() {
 
   const bookingType = searchParams.get("type") || "tour";
   const refId = searchParams.get("ref_id") || "";
-  const title = searchParams.get("title") || "Cox's Bazar Beach & Inani Sunset Adventure";
-  const priceParam = Number(searchParams.get("price") || "8500");
-  const travelDate = searchParams.get("travel_date") || "2026-08-15";
+  const title = searchParams.get("title") || "Isbah Travels Booking";
+  const priceParam = Number(searchParams.get("price") || "0");
+  const travelDate = searchParams.get("travel_date") || "";
 
-  // Form state
-  const [passengerName, setPassengerName] = useState("Mohammad Rahman");
-  const [email, setEmail] = useState("rahman@example.com");
-  const [phone, setPhone] = useState("01711002233");
-  const [nidOrPassport, setNidOrPassport] = useState("BN-98214309");
+  const [passengerName, setPassengerName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [nidOrPassport, setNidOrPassport] = useState("");
   const [promoCode, setPromoCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [userId, setUserId] = useState("");
+  const [profileLoading, setProfileLoading] = useState(true);
 
-  // Mandatory Authentication Check
+  // Load authenticated user profile — auto-fill form + guard access
   useEffect(() => {
-    const isUserAuth = document.cookie.includes("isbah_user_session") || localStorage.getItem("isbah_user_email");
-    if (!isUserAuth) {
-      const fullPath = `${pathname}?${searchParams.toString()}`;
-      router.push(`/signin?redirect=${encodeURIComponent(fullPath)}`);
+    async function loadUserProfile() {
+      setProfileLoading(true);
+
+      if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+        setProfileLoading(false);
+        return;
+      }
+
+      try {
+        const supabase = createClient();
+        const { data: { user }, error } = await supabase.auth.getUser();
+
+        if (error || !user) {
+          // Not authenticated — redirect to sign in
+          const fullPath = `${pathname}?${searchParams.toString()}`;
+          router.push(`/signin?redirect=${encodeURIComponent(fullPath)}`);
+          return;
+        }
+
+        setUserId(user.id);
+
+        // Fetch profile to auto-fill form
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("display_name, email, phone, passport_number, national_id")
+          .eq("id", user.id)
+          .single();
+
+        if (profile) {
+          setPassengerName(profile.display_name || "");
+          setEmail(profile.email || user.email || "");
+          setPhone(profile.phone || "");
+          setNidOrPassport(profile.passport_number || profile.national_id || "");
+        } else {
+          setEmail(user.email || "");
+          setPassengerName(user.user_metadata?.full_name || "");
+        }
+      } catch (err) {
+        console.warn("Profile load error:", err);
+      }
+
+      setProfileLoading(false);
     }
-  }, [router, pathname, searchParams]);
+
+    loadUserProfile();
+  }, [pathname, router, searchParams]);
 
   const handleApplyPromo = () => {
     if (promoCode.toUpperCase() === "ISBAH10") {
       setDiscount(priceParam * 0.1);
     } else {
-      alert("Invalid promo code. Try 'ISBAH10' for 10% discount!");
+      setErrorMessage("Invalid promo code. Try 'ISBAH10' for 10% discount!");
     }
   };
 
@@ -53,6 +95,10 @@ function CheckoutContent() {
       setErrorMessage("Please fill in your name, email, and phone number.");
       return;
     }
+    if (!userId) {
+      router.push(`/signin?redirect=${encodeURIComponent(`${pathname}?${searchParams.toString()}`)}`);
+      return;
+    }
 
     setIsSubmitting(true);
     setErrorMessage("");
@@ -62,6 +108,7 @@ function CheckoutContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          user_id: userId,
           booking_type: bookingType,
           reference_id: refId,
           total_price: finalPrice,
@@ -72,6 +119,8 @@ function CheckoutContent() {
             title,
             travel_date: travelDate,
             nid_or_passport: nidOrPassport,
+            lead_passenger: passengerName,
+            customer_name: passengerName,
           },
         }),
       });
@@ -80,7 +129,7 @@ function CheckoutContent() {
       if (data.gateway_url) {
         window.location.href = data.gateway_url;
       } else {
-        setErrorMessage("Failed to initiate payment gateway.");
+        setErrorMessage(data.error || "Failed to initiate payment gateway.");
       }
     } catch (err: any) {
       setErrorMessage(err.message || "Payment initiation error");
@@ -89,9 +138,20 @@ function CheckoutContent() {
     }
   };
 
+  if (profileLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center p-12">
+        <div className="flex items-center gap-3 text-slate-500 font-bold">
+          <Loader2 className="h-6 w-6 animate-spin text-emerald-700" />
+          <span>Verifying your account...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10 space-y-8 bg-white text-slate-900">
-      
+
       {/* Header Banner */}
       <div className="rounded-3xl bg-slate-50 border border-slate-200 text-slate-900 p-6 sm:p-8 flex items-center justify-between shadow-xs">
         <div>
@@ -100,18 +160,26 @@ function CheckoutContent() {
             Confirm & Pay Booking
           </h1>
           <p className="text-xs text-slate-500 font-semibold">
-            Mandatory Registered User Account Verified • 256-bit Encrypted Payment
+            Account Verified • Auto-filled from your Isbah profile • 256-bit Encrypted Payment
           </p>
+        </div>
+        <div className="hidden sm:flex items-center gap-2 bg-white p-3 rounded-2xl border border-slate-200 text-xs font-semibold">
+          <ShieldCheck className="h-5 w-5 text-emerald-700 shrink-0" />
+          <div>
+            <p className="font-bold text-slate-900">Account Verified</p>
+            <p className="text-slate-500 truncate max-w-[140px]">{email}</p>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* Left Column: Passenger Info Form */}
         <div className="lg:col-span-2 space-y-6">
           <form onSubmit={handleInitiateSSLCommerz} className="p-6 rounded-3xl border border-slate-200 bg-white space-y-5 shadow-xs">
             <h3 className="font-bold text-slate-900 text-base border-b border-slate-100 pb-3">
               Passenger & Contact Details
+              <span className="block text-[10px] text-emerald-700 font-bold mt-0.5">✓ Auto-filled from your Isbah profile</span>
             </h3>
 
             {errorMessage && (
@@ -139,7 +207,7 @@ function CheckoutContent() {
                 <input
                   type="tel"
                   required
-                  placeholder="e.g. 01711002233"
+                  placeholder="e.g. +880 1700-000000"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-semibold outline-none focus:border-slate-400"
@@ -151,7 +219,7 @@ function CheckoutContent() {
                 <input
                   type="email"
                   required
-                  placeholder="rahim@example.com"
+                  placeholder="your@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-semibold outline-none focus:border-slate-400"
@@ -162,7 +230,7 @@ function CheckoutContent() {
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">NID or Passport Number</label>
                 <input
                   type="text"
-                  placeholder="Optional"
+                  placeholder="Optional — from your profile"
                   value={nidOrPassport}
                   onChange={(e) => setNidOrPassport(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-semibold outline-none focus:border-slate-400"
@@ -174,10 +242,9 @@ function CheckoutContent() {
             <div className="pt-3 border-t border-slate-100 space-y-2">
               <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Payment Channels (SSLCommerz)</h4>
               <div className="flex flex-wrap gap-1.5 text-xs font-bold text-slate-700">
-                <span className="px-2.5 py-1 rounded bg-slate-100 border border-slate-200">bKash</span>
-                <span className="px-2.5 py-1 rounded bg-slate-100 border border-slate-200">Nagad</span>
-                <span className="px-2.5 py-1 rounded bg-slate-100 border border-slate-200">Rocket</span>
-                <span className="px-2.5 py-1 rounded bg-slate-100 border border-slate-200">VISA / Mastercard</span>
+                {["bKash", "Nagad", "Rocket", "VISA / Mastercard", "DBBL Nexus"].map(m => (
+                  <span key={m} className="px-2.5 py-1 rounded bg-slate-100 border border-slate-200">{m}</span>
+                ))}
               </div>
             </div>
 
@@ -187,8 +254,11 @@ function CheckoutContent() {
               size="lg"
               className="w-full font-bold text-xs gap-2 rounded-2xl mt-2"
             >
-              <CreditCard className="h-4 w-4" />
-              <span>{isSubmitting ? "Initiating SSLCommerz..." : `Pay ${formatBDT(finalPrice)} via SSLCommerz`}</span>
+              {isSubmitting ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /><span>Initiating SSLCommerz...</span></>
+              ) : (
+                <><CreditCard className="h-4 w-4" /><span>Pay {formatBDT(finalPrice)} via SSLCommerz</span></>
+              )}
             </Button>
           </form>
         </div>
@@ -206,7 +276,7 @@ function CheckoutContent() {
               {travelDate && <p className="text-slate-500 font-semibold">Date: {travelDate}</p>}
             </div>
 
-            {/* Promo Code Input */}
+            {/* Promo Code */}
             <div className="pt-2 border-t border-slate-100 space-y-2">
               <label className="block text-[10px] font-bold text-slate-400 uppercase">Promo Code</label>
               <div className="flex gap-2">
@@ -245,7 +315,6 @@ function CheckoutContent() {
         </div>
 
       </div>
-
     </div>
   );
 }

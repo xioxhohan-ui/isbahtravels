@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Compass, LayoutDashboard, Plane, Hotel, Compass as TourIcon, FileCheck, Ticket, Users, Star, PhoneCall, ShieldAlert, LogOut, ArrowLeft, Menu, X } from "lucide-react";
+import { Compass, LayoutDashboard, Plane, Hotel, Compass as TourIcon, FileCheck, Ticket, Users, Star, PhoneCall, ShieldAlert, LogOut, ArrowLeft, Menu, X, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -27,6 +27,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: "Manage Reviews", href: "/isbah/reviews", icon: Star },
     { label: "Inquiries & Callbacks", href: "/isbah/inquiries", icon: PhoneCall },
     { label: "Security Audit Logs", href: "/isbah/audit-logs", icon: ShieldAlert },
+    { label: "Email Logs", href: "/isbah/email-logs", icon: Mail },
   ];
 
   const handleLogout = () => {
