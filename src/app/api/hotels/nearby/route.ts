@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/client";
 
+// 24-Hour Cache Store for Google Places Nearby Search (key: "lat,lng,radius")
+const placesCache = new Map<string, { data: any[]; expiresAt: number }>();
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 Hours in milliseconds
+
 // Haversine formula to compute distance in km between two lat/lng points
 function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371; // Earth's radius in km
@@ -25,6 +29,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing latitude or longitude" }, { status: 400 });
     }
 
+    const cacheKey = `${Number(latitude).toFixed(4)},${Number(longitude).toFixed(4)},${radius}`;
+    const cachedEntry = placesCache.get(cacheKey);
+
+    // 1. Check 24-Hour Cache first
+    if (cachedEntry && Date.now() < cachedEntry.expiresAt) {
+      console.log(`[PLACES API CACHE HIT] Returning 24-hour cached nearby results for ${cacheKey}`);
+      
+      // Update Supabase if hotel_id provided
+      if (hotel_id && process.env.NEXT_PUBLIC_SUPABASE_URL) {
+        try {
+          const supabase = createClient();
+          await supabase.from("hotels").update({ nearby: cachedEntry.data }).eq("id", hotel_id);
+        } catch (dbErr) {
+          console.warn("Supabase nearby update error", dbErr);
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        cached: true,
+        expires_in_hours: Math.round((cachedEntry.expiresAt - Date.now()) / (1000 * 60 * 60)),
+        nearby: cachedEntry.data,
+      });
+    }
+
+    // 2. Fetch from Google Places API
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     let nearbyPlaces: Array<{ name: string; type: string; distance: string; lat: number; lng: number }> = [];
 
@@ -98,6 +128,12 @@ export async function POST(request: Request) {
       ];
     }
 
+    // Save to 24-Hour Cache Store
+    placesCache.set(cacheKey, {
+      data: nearbyPlaces,
+      expiresAt: Date.now() + CACHE_TTL_MS,
+    });
+
     // Update Supabase database if hotel_id is provided
     if (hotel_id && process.env.NEXT_PUBLIC_SUPABASE_URL) {
       try {
@@ -113,6 +149,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
+      cached: false,
       hotel_id,
       radius_meters: radius,
       places_count: nearbyPlaces.length,
