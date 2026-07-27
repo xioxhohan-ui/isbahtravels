@@ -31,11 +31,6 @@ function SignUpContent() {
       return;
     }
 
-    if (!phone || phone.length < 10) {
-      setError("Please provide a valid mobile contact number.");
-      return;
-    }
-
     setLoading(true);
     setError("");
 
@@ -248,13 +243,12 @@ function SignUpContent() {
 
           <div>
             <label className="block font-bold text-slate-500 uppercase text-[10px] tracking-wider mb-1">
-              Mobile Number (+880...)
+              Mobile Number (Optional)
             </label>
             <div className="relative">
               <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="tel"
-                required
                 placeholder="+880 1700-123456"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}

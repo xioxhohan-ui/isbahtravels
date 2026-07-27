@@ -30,25 +30,12 @@ function SignInContent() {
   const supabase = createClient();
 
   useEffect(() => {
-    // Check if user is already signed in & missing phone
+    // Check if user is already signed in
     async function checkSession() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          // Fetch profile safely
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("phone")
-            .eq("id", user.id)
-            .maybeSingle();
-
-          if (profile && !profile.phone) {
-            setCurrentUserId(user.id);
-            setCurrentUserEmail(user.email || "");
-            setShowPhoneModal(true);
-          } else {
-            router.push(redirectPath);
-          }
+          router.push(redirectPath);
         }
       } catch (e) {
         console.warn("Session check warning:", e);
@@ -88,24 +75,10 @@ function SignInContent() {
       }
 
       if (data.user) {
-        // Save legacy session fallback
+        // Save session fallback
         document.cookie = `isbah_user_session=${encodeURIComponent(email)}; path=/; max-age=86400`;
         localStorage.setItem("isbah_user_email", email);
-
-        // Fetch profile safely
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("phone")
-          .eq("id", data.user.id)
-          .maybeSingle();
-
-        if (profile && !profile.phone) {
-          setCurrentUserId(data.user.id);
-          setCurrentUserEmail(data.user.email || email);
-          setShowPhoneModal(true);
-        } else {
-          router.push(redirectPath);
-        }
+        router.push(redirectPath);
       }
     } catch (err: any) {
       const errStr = String(err?.message || err);

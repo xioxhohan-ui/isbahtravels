@@ -340,6 +340,9 @@ ALTER TABLE public.user_2fa ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public / Users can read profiles" ON public.profiles;
 CREATE POLICY "Public / Users can read profiles" ON public.profiles FOR SELECT USING ( (select auth.uid()) = id OR public.is_admin() );
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+CREATE POLICY "Users can insert own profile" ON public.profiles FOR INSERT WITH CHECK ( (select auth.uid()) = id OR public.is_admin() );
+
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING ( (select auth.uid()) = id OR public.is_admin() ) WITH CHECK ( (select auth.uid()) = id OR public.is_admin() );
 

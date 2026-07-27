@@ -91,24 +91,34 @@ export function PhoneModal({ isOpen, userId, userEmail, onComplete }: PhoneModal
               </div>
             </div>
 
-            <Button
-              type="submit"
-              disabled={loading}
-              size="lg"
-              className="w-full font-bold text-xs gap-2 rounded-2xl bg-slate-900 text-white hover:bg-slate-800"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span>Saving Profile...</span>
-                </>
-              ) : (
-                <>
-                  <span>Complete Account</span>
-                  <ArrowRight className="h-4 w-4 text-emerald-400" />
-                </>
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onComplete("")}
+                className="w-1/3 font-bold text-xs rounded-2xl border-slate-200 text-slate-600 hover:bg-slate-50"
+              >
+                Skip for Now
+              </Button>
+              <Button
+                type="submit"
+                disabled={loading}
+                size="lg"
+                className="w-2/3 font-bold text-xs gap-2 rounded-2xl bg-slate-900 text-white hover:bg-slate-800"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Saving Profile...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Complete Account</span>
+                    <ArrowRight className="h-4 w-4 text-emerald-400" />
+                  </>
+                )}
+              </Button>
+            </div>
           </form>
 
           <div className="pt-2 border-t border-slate-100 text-center">
