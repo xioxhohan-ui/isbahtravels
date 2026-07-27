@@ -647,14 +647,11 @@ export const apiService = {
         localInquiries = JSON.parse(localStorage.getItem("isbah_local_visa_inquiries") || "[]");
       } catch {}
     }
-    const mockInquiries: VisaInquiry[] = [
-      { id: "inq-1", name: "Rahim Chowdhury", phone: "+8801711223344", email: "rahim@gmail.com", preferred_date: "2026-08-20", status: "new", additional_requirements: "Saudi Arabia Umrah Visa Urgently Needed", created_at: new Date().toISOString() },
-      { id: "inq-2", name: "Tania Akter", phone: "+8801822334455", email: "tania@yahoo.com", preferred_date: "2026-09-01", status: "new", additional_requirements: "Dubai Tourist Express Visa", created_at: new Date().toISOString() },
-    ];
+    const mockInquiries: VisaInquiry[] = [];
     const combined = [...localInquiries, ...dbInquiries, ...mockInquiries];
     const map = new Map<string, VisaInquiry>();
     combined.forEach(i => map.set(i.id, i));
-    return Array.from(map.values());
+    return filterDeleted(Array.from(map.values()));
   },
 
   async getTourInquiries(): Promise<TourInquiry[]> {
@@ -674,13 +671,11 @@ export const apiService = {
         localInquiries = JSON.parse(localStorage.getItem("isbah_local_tour_inquiries") || "[]");
       } catch {}
     }
-    const mockInquiries: TourInquiry[] = [
-      { id: "t-inq-1", name: "Tanvir Hasan", phone: "+8801933445566", email: "tanvir@gmail.com", journey_date: "2026-08-15", status: "new", additional_requirements: "Family Package Cox's Bazar 3N/4D", created_at: new Date().toISOString() }
-    ];
+    const mockInquiries: TourInquiry[] = [];
     const combined = [...localInquiries, ...dbInquiries, ...mockInquiries];
     const map = new Map<string, TourInquiry>();
     combined.forEach(i => map.set(i.id, i));
-    return Array.from(map.values());
+    return filterDeleted(Array.from(map.values()));
   },
 
   async submitVisaInquiry(inquiry: Omit<VisaInquiry, "id" | "status" | "created_at">): Promise<boolean> {
