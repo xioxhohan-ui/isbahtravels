@@ -33,6 +33,8 @@ export async function POST(request: Request) {
 
     const tran_id = `ISBAH-SSL-${booking.id}`;
 
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
     // SSLCommerz payment data structure
     const sslData = {
       store_id,
@@ -40,10 +42,10 @@ export async function POST(request: Request) {
       total_amount: total_price,
       currency: "BDT",
       tran_id,
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/payment/success?booking_id=${booking.id}`,
-      fail_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/payment/fail?booking_id=${booking.id}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/payment/cancel?booking_id=${booking.id}`,
-      ipn_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/payment/ipn`,
+      success_url: `${appUrl}/api/payment/success?booking_id=${booking.id}`,
+      fail_url: `${appUrl}/api/payment/fail?booking_id=${booking.id}`,
+      cancel_url: `${appUrl}/api/payment/cancel?booking_id=${booking.id}`,
+      ipn_url: `${appUrl}/api/payment/ipn`,
       cus_name: customer_name || "Guest Customer",
       cus_email: customer_email || "customer@isbahtravels.com",
       cus_add1: "Dhaka",
