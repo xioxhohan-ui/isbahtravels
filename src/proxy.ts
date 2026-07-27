@@ -24,6 +24,9 @@ export async function proxy(request: NextRequest) {
             headers: {
               "Content-Type": "application/json",
               "Retry-After": "60",
+              "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+              "X-Frame-Options": "DENY",
+              "X-Content-Type-Options": "nosniff",
             },
           }
         );
@@ -40,7 +43,7 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  // 2. CORS HARDENING (Specific Origin, No Wildcard *)
+  // 2. CORS HARDENING (Exact Domain, No Wildcard *)
   const origin = request.headers.get("origin") || "";
   const allowedOrigins = [
     "https://isbahtravels.vercel.app",
@@ -56,17 +59,17 @@ export async function proxy(request: NextRequest) {
   response.headers.set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
   response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
 
-  // Handle CORS OPTIONS preflight
   if (request.method === "OPTIONS") {
     return new NextResponse(null, { status: 204, headers: response.headers });
   }
 
-  // 3. SECURITY HEADERS & HSTS PRELOAD
+  // 3. MANDATORY CRITICAL SECURITY HEADERS & HSTS PRELOAD
   response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+  response.headers.set("X-XSS-Protection", "1; mode=block");
   response.headers.set(
     "Content-Security-Policy",
     "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googleapis.com https://*.google.com https://*.vercel-scripts.com https://*.vercel-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://*.sslcommerz.com https://*.googleapis.com https://flagcdn.com https://*.vercel-analytics.com; frame-ancestors 'none'; block-all-mixed-content;"
@@ -91,7 +94,7 @@ export async function proxy(request: NextRequest) {
               response.cookies.set(name, value, {
                 ...options,
                 sameSite: "strict",
-                secure: process.env.NODE_ENV === "production",
+                secure: process.env.NODE_ENV === "production" || process.env.VERCEL === "1",
                 httpOnly: true,
               });
             });
