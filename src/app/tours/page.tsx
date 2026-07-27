@@ -60,7 +60,7 @@ function ToursContent() {
       {/* Header Banner */}
       <div className="rounded-3xl bg-slate-50 border border-slate-200 text-slate-900 p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xs">
         <div className="space-y-1">
-          <Badge variant="outline" className="font-bold text-xs">🏖️ Tour Packages & Expeditions</Badge>
+          <Badge variant="outline" className="font-bold text-xs">Tour Packages & Expeditions</Badge>
           <h1 className="font-outfit text-3xl font-black text-slate-900">
             Explore Handcrafted Holiday Packages
           </h1>

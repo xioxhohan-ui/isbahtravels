@@ -62,7 +62,7 @@ export async function GET(request: Request) {
         <body>
           <div className="no-print" style="margin-bottom: 20px;">
             <button onclick="window.print()" style="padding: 10px 20px; background: #047857; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
-              🖨️ Print / Save as PDF
+              Print / Save as PDF
             </button>
           </div>
 

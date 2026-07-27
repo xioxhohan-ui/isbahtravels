@@ -53,7 +53,7 @@ function FlightsContent() {
       {/* Header Banner */}
       <div className="rounded-3xl bg-slate-50 border border-slate-200 text-slate-900 p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xs">
         <div className="space-y-1 text-center md:text-left">
-          <Badge variant="outline" className="font-bold text-xs">✈️ Flight Search Results</Badge>
+          <Badge variant="outline" className="font-bold text-xs">Flight Search Results</Badge>
           <h1 className="font-outfit text-2xl sm:text-3xl font-black text-slate-900">
             {initialFrom} <span className="text-emerald-700">➔</span> {initialTo}
           </h1>

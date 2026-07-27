@@ -105,13 +105,12 @@ function formatBDT(amount: number): string {
 
 export function welcomeEmailTemplate(data: WelcomeEmailData): string {
   return baseLayout(`
-    <div class="success-icon">✈️</div>
     <div class="greeting">Welcome aboard, ${data.user_name}!</div>
     <p class="subtext">
       Your Isbah Travels account is now active. You can now book flights, hotels, tour packages, and visa services — all in one place.
     </p>
     <div class="alert-box success">
-      🎉 Your account has been successfully created with <strong>${data.user_email}</strong>
+      Your account has been successfully created with <strong>${data.user_email}</strong>
     </div>
     <div class="card">
       <div class="card-row">
@@ -138,8 +137,7 @@ export function welcomeEmailTemplate(data: WelcomeEmailData): string {
 export function bookingConfirmedEmailTemplate(data: BookingConfirmedEmailData): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://isbahtravels.com";
   return baseLayout(`
-    <div class="success-icon">✅</div>
-    <div class="greeting">Payment Confirmed!</div>
+    <div class="greeting">Payment Confirmed</div>
     <p class="subtext">
       Dear ${data.user_name}, your payment has been received and your booking is confirmed. Your e-ticket details are below.
     </p>
@@ -174,7 +172,7 @@ export function bookingConfirmedEmailTemplate(data: BookingConfirmedEmailData): 
     <a href="${appUrl}/dashboard" class="cta-btn cta-btn-gold">View My Booking & Download Receipt →</a>
     <div class="divider"></div>
     <div class="alert-box success">
-      📄 Your PDF receipt is available for download from your dashboard. Signed URL expires in 24 hours.
+      Your PDF receipt is available for download from your dashboard.
     </div>
   `);
 }
@@ -182,7 +180,6 @@ export function bookingConfirmedEmailTemplate(data: BookingConfirmedEmailData): 
 export function paymentFailedEmailTemplate(data: PaymentFailedEmailData): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://isbahtravels.com";
   return baseLayout(`
-    <div class="success-icon">⚠️</div>
     <div class="greeting">Payment Was Not Completed</div>
     <p class="subtext">
       Dear ${data.user_name}, your payment for the booking below could not be processed. No amount has been deducted from your account.
@@ -210,7 +207,7 @@ export function paymentFailedEmailTemplate(data: PaymentFailedEmailData): string
       </div>` : ""}
     </div>
     <div class="alert-box warning">
-      💡 Please try again with a different payment method. If the issue persists, contact our support team.
+      Please try again with a different payment method. If the issue persists, contact our support team.
     </div>
     <a href="${appUrl}/dashboard" class="cta-btn">Retry Booking →</a>
     <div class="divider"></div>
@@ -221,7 +218,6 @@ export function paymentFailedEmailTemplate(data: PaymentFailedEmailData): string
 export function bookingCancelledEmailTemplate(data: PaymentFailedEmailData): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://isbahtravels.com";
   return baseLayout(`
-    <div class="success-icon">🚫</div>
     <div class="greeting">Booking Cancelled</div>
     <p class="subtext">
       Dear ${data.user_name}, your booking has been cancelled. If this was not intentional, please contact our team immediately.
@@ -245,7 +241,7 @@ export function bookingCancelledEmailTemplate(data: PaymentFailedEmailData): str
       </div>
     </div>
     <div class="alert-box warning">
-      ℹ️ Refund policy: If eligible, refunds are processed within 5–7 working days to your original payment method.
+      Refund policy: If eligible, refunds are processed within 5–7 working days to your original payment method.
     </div>
     <a href="${appUrl}/tours" class="cta-btn">Book Again →</a>
   `);
@@ -255,7 +251,6 @@ export function bookingStatusUpdateEmailTemplate(data: BookingStatusUpdateEmailD
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://isbahtravels.com";
   const isConfirmed = data.new_status.toLowerCase() === "confirmed";
   return baseLayout(`
-    <div class="success-icon">${isConfirmed ? "🎫" : "📋"}</div>
     <div class="greeting">Booking Status Updated</div>
     <p class="subtext">
       Dear ${data.user_name}, your booking status has been updated by our team.

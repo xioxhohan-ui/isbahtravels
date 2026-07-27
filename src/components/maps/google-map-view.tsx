@@ -109,8 +109,8 @@ export default function GoogleMapView({
                 className="flex items-center justify-between rounded-2xl bg-slate-50/80 p-3 border border-slate-200/80 text-xs hover:bg-slate-100/80 transition-all shadow-2xs group"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white border border-slate-200 text-base shadow-2xs group-hover:scale-105 transition-transform">
-                    📍
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white border border-slate-200 shadow-2xs group-hover:scale-105 transition-transform text-slate-700">
+                    <MapPin className="h-4 w-4 text-emerald-700" />
                   </div>
                   <div className="min-w-0">
                     <p className="font-bold text-slate-900 truncate leading-tight">{place.name}</p>
