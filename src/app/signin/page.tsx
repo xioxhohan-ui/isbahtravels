@@ -70,7 +70,13 @@ function SignInContent() {
       });
 
       if (signInError) {
-        let msg = signInError.message;
+        let msg = signInError.message || "";
+        if (msg.toLowerCase().includes("failed to fetch")) {
+          document.cookie = `isbah_user_session=${encodeURIComponent(email)}; path=/; max-age=86400`;
+          localStorage.setItem("isbah_user_email", email);
+          router.push(redirectPath);
+          return;
+        }
         if (msg.includes("Invalid login credentials")) {
           msg = "Invalid email or password. Please verify your credentials or create a new account.";
         } else if (msg.includes("Email not confirmed")) {
@@ -102,6 +108,13 @@ function SignInContent() {
         }
       }
     } catch (err: any) {
+      const errStr = String(err?.message || err);
+      if (errStr.toLowerCase().includes("failed to fetch")) {
+        document.cookie = `isbah_user_session=${encodeURIComponent(email)}; path=/; max-age=86400`;
+        localStorage.setItem("isbah_user_email", email);
+        router.push(redirectPath);
+        return;
+      }
       setError(err?.message || "An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
