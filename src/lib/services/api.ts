@@ -1,6 +1,6 @@
 import { MOCK_BOOKINGS, MOCK_FLIGHTS, MOCK_HOTELS, MOCK_ROOMS, MOCK_TOURS, MOCK_VISAS } from "../mock-data";
 import { createClient } from "../supabase/client";
-import { Booking, Flight, Hotel, Room, Tour, TourInquiry, Visa, VisaInquiry } from "../types/database";
+import { Booking, BookingStatus, Flight, Hotel, PaymentStatus, Room, Tour, TourInquiry, Visa, VisaInquiry } from "../types/database";
 
 const isSupabaseConfigured = () => {
   return (
@@ -539,6 +539,41 @@ export const apiService = {
 
     MOCK_BOOKINGS.unshift(newBooking);
     return newBooking;
+  },
+
+  async updateBookingStatus(id: string, paymentStatus: PaymentStatus, bookingStatus: BookingStatus): Promise<boolean> {
+    if (typeof window !== "undefined") {
+      try {
+        const local = JSON.parse(localStorage.getItem("isbah_local_bookings") || "[]");
+        const idx = local.findIndex((b: any) => b.id === id);
+        if (idx !== -1) {
+          local[idx].payment_status = paymentStatus;
+          local[idx].booking_status = bookingStatus;
+          local[idx].updated_at = new Date().toISOString();
+          localStorage.setItem("isbah_local_bookings", JSON.stringify(local));
+          window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        }
+      } catch {}
+    }
+
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        await supabase
+          .from("bookings")
+          .update({ payment_status: paymentStatus, booking_status: bookingStatus, updated_at: new Date().toISOString() })
+          .eq("id", id);
+      } catch (err) {
+        console.warn("Supabase update booking status error", err);
+      }
+    }
+
+    const mockIdx = MOCK_BOOKINGS.findIndex(b => b.id === id);
+    if (mockIdx !== -1) {
+      MOCK_BOOKINGS[mockIdx].payment_status = paymentStatus;
+      MOCK_BOOKINGS[mockIdx].booking_status = bookingStatus;
+    }
+    return true;
   },
 
   async getUserBookings(userId?: string): Promise<Booking[]> {
