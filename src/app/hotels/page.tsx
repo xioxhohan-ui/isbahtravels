@@ -26,10 +26,12 @@ function HotelsContent() {
   const [loading, setLoading] = useState(true);
   const [selectedCity, setSelectedCity] = useState(initialCity);
   const [selectedRating, setSelectedRating] = useState<number>(0);
-  const [selectedTag, setSelectedTag] = useState("All");
   const [showMap, setShowMap] = useState(false);
   const [activeHotelMap, setActiveHotelMap] = useState<Hotel | null>(null);
   const [savedHotelIds, setSavedHotelIds] = useState<Set<string>>(new Set());
+  const [maxPrice, setMaxPrice] = useState(100000);
+  const [selectedStarRatings, setSelectedStarRatings] = useState<number[]>([]);
+  const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
 
   useEffect(() => {
     async function loadHotels() {
@@ -59,6 +61,35 @@ function HotelsContent() {
       window.removeEventListener("storage", loadHotels);
     };
   }, [selectedCity, selectedRating]);
+
+  const toggleStarRating = (star: number) => {
+    setSelectedStarRatings(prev =>
+      prev.includes(star) ? prev.filter(s => s !== star) : [...prev, star]
+    );
+  };
+
+  const toggleAmenity = (amenity: string) => {
+    setSelectedAmenities(prev =>
+      prev.includes(amenity) ? prev.filter(a => a !== amenity) : [...prev, amenity]
+    );
+  };
+
+  const filteredHotels = hotels.filter((h) => {
+    const price = h.min_price || 6500;
+    if (price > maxPrice) return false;
+
+    if (selectedStarRatings.length > 0) {
+      if (!selectedStarRatings.includes(h.star_rating)) return false;
+    }
+
+    if (selectedAmenities.length > 0) {
+      const allFacilities = Object.values(h.facilities || {}).flat().join(" ").toLowerCase();
+      const hasAllSelected = selectedAmenities.every(a => allFacilities.includes(a.toLowerCase()));
+      if (!hasAllSelected) return false;
+    }
+
+    return true;
+  });
 
   const toggleSaveHotel = async (hotel: Hotel, e: React.MouseEvent) => {
     e.preventDefault();
@@ -168,21 +199,89 @@ function HotelsContent() {
         </div>
       )}
 
-      {/* High-Density Hotel Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        {loading ? (
-          <div className="col-span-full p-8 text-center text-slate-500 font-bold text-xs">
-            Loading hotel listings...
+      {/* Filter Sidebar & Hotel Grid Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        
+        {/* Filters Sidebar (Phone & Desktop Responsive) */}
+        <div className="space-y-5 rounded-2xl border border-slate-200 p-4 bg-slate-50 h-fit lg:col-span-1">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <h3 className="font-bold text-slate-900 flex items-center gap-2 text-xs">
+              <Filter className="h-4 w-4 text-emerald-700" />
+              Filter Hotels
+            </h3>
+            <span className="text-[11px] text-slate-500 font-bold">{filteredHotels.length} Properties</span>
           </div>
-        ) : hotels.length === 0 ? (
-          <div className="col-span-full p-8 text-center border border-dashed border-slate-300 rounded-2xl space-y-2 text-xs">
-            <p className="font-bold text-slate-700">No hotels found matching selected filters.</p>
-            <Button onClick={() => { setSelectedCity(""); setSelectedRating(0); }} size="sm" variant="outline" className="text-xs font-bold rounded-xl">Clear Filters</Button>
+
+          {/* Price Range Slider */}
+          <div className="space-y-2">
+            <div className="flex justify-between items-center text-xs">
+              <label className="font-extrabold text-slate-400 uppercase text-[10px]">Max Price per Night</label>
+              <span className="font-extrabold text-slate-900">{formatBDT(maxPrice)}</span>
+            </div>
+            <input
+              type="range"
+              min={2000}
+              max={100000}
+              step={2500}
+              value={maxPrice}
+              onChange={(e) => setMaxPrice(Number(e.target.value))}
+              className="w-full accent-slate-900 cursor-pointer"
+            />
           </div>
-        ) : (
-          hotels.map((hotel) => {
-            const isFavorite = savedHotelIds.has(hotel.id);
-            return (
+
+          {/* Star Rating Checkboxes */}
+          <div className="space-y-2 pt-2 border-t border-slate-200">
+            <label className="font-extrabold text-slate-400 uppercase text-[10px] block">Star Rating</label>
+            <div className="space-y-1.5 text-xs font-semibold text-slate-700">
+              {[5, 4, 3].map((star) => (
+                <label key={star} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedStarRatings.includes(star)}
+                    onChange={() => toggleStarRating(star)}
+                    className="accent-slate-900 rounded"
+                  />
+                  <span>{star}-Star Luxury & Resorts</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Popular Amenities Checkboxes */}
+          <div className="space-y-2 pt-2 border-t border-slate-200">
+            <label className="font-extrabold text-slate-400 uppercase text-[10px] block">Popular Amenities</label>
+            <div className="space-y-1.5 text-xs font-semibold text-slate-700">
+              {["Beach", "Pool", "WiFi", "Spa"].map((amenity) => (
+                <label key={amenity} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedAmenities.includes(amenity)}
+                    onChange={() => toggleAmenity(amenity)}
+                    className="accent-slate-900 rounded"
+                  />
+                  <span>{amenity === "WiFi" ? "Free High-Speed WiFi" : amenity === "Pool" ? "Swimming Pool" : amenity === "Beach" ? "Beachfront Access" : "Spa & Wellness"}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Hotel Cards Grid (3 Columns on Desktop inside lg:col-span-3) */}
+        <div className="lg:col-span-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {loading ? (
+              <div className="col-span-full p-8 text-center text-slate-500 font-bold text-xs">
+                Loading hotel listings...
+              </div>
+            ) : filteredHotels.length === 0 ? (
+              <div className="col-span-full p-8 text-center border border-dashed border-slate-300 rounded-2xl space-y-2 text-xs">
+                <p className="font-bold text-slate-700">No hotels found matching selected filters.</p>
+                <Button onClick={() => { setSelectedCity(""); setMaxPrice(100000); setSelectedStarRatings([]); setSelectedAmenities([]); }} size="sm" variant="outline" className="text-xs font-bold rounded-xl">Clear Filters</Button>
+              </div>
+            ) : (
+              filteredHotels.map((hotel) => {
+                const isFavorite = savedHotelIds.has(hotel.id);
+                return (
               <Card
                 key={hotel.id}
                 onMouseEnter={() => setActiveHotelMap(hotel)}
@@ -254,6 +353,8 @@ function HotelsContent() {
             );
           })
         )}
+          </div>
+        </div>
       </div>
 
     </div>
