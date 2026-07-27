@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { apiService } from "@/lib/services/api";
+import { useSupabaseRealtime } from "@/lib/hooks/use-supabase-realtime";
 import { formatBDT } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -55,50 +57,64 @@ export default function AdminDashboardPage() {
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadLiveStats() {
-      setLoading(true);
-      try {
-        const supabase = createClient();
+  async function loadLiveStats() {
+    try {
+      let bookings: any[] = [];
+      let totalUsersCount = 0;
+      let pendingInqCount = 0;
 
-        // Run all queries in parallel
-        const [bookingsRes, profilesRes, visaInqRes, tourInqRes] = await Promise.all([
-          supabase.from("bookings").select("*").order("created_at", { ascending: false }),
-          supabase.from("profiles").select("id", { count: "exact" }),
-          supabase.from("visa_inquiries").select("id", { count: "exact" }).eq("status", "new"),
-          supabase.from("tour_inquiries").select("id", { count: "exact" }).eq("status", "new"),
-        ]);
+      // Load bookings (combines Supabase DB + local storage)
+      bookings = await apiService.getBookings();
 
-        const bookings = bookingsRes.data || [];
-        const totalRevenue = bookings
-          .filter((b) => b.payment_status === "paid")
-          .reduce((sum: number, b: any) => sum + Number(b.total_price), 0);
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+        try {
+          const supabase = createClient();
+          const [profilesRes, visaInqRes, tourInqRes] = await Promise.all([
+            supabase.from("profiles").select("id", { count: "exact" }),
+            supabase.from("visa_inquiries").select("id", { count: "exact" }).eq("status", "new"),
+            supabase.from("tour_inquiries").select("id", { count: "exact" }).eq("status", "new"),
+          ]);
 
-        setStats({
-          totalRevenue,
-          totalBookings: bookings.length,
-          totalUsers: profilesRes.count || 0,
-          pendingInquiries: (visaInqRes.count || 0) + (tourInqRes.count || 0),
-          recentBookings: bookings.slice(0, 8),
-        });
-      } catch (err) {
-        console.warn("Admin dashboard load error:", err);
+          totalUsersCount = profilesRes.count || 0;
+          pendingInqCount = (visaInqRes.count || 0) + (tourInqRes.count || 0);
+        } catch (err) {
+          console.warn("Supabase query error in admin dashboard", err);
+        }
       }
+
+      const totalRevenue = bookings
+        .filter((b) => b.payment_status === "paid" || b.booking_status === "confirmed")
+        .reduce((sum: number, b: any) => sum + Number(b.total_price || 0), 0);
+
+      setStats({
+        totalRevenue,
+        totalBookings: bookings.length,
+        totalUsers: totalUsersCount,
+        pendingInquiries: pendingInqCount,
+        recentBookings: bookings.slice(0, 8),
+      });
+    } catch (err) {
+      console.warn("Admin dashboard load error:", err);
+    } finally {
       setLoading(false);
     }
+  }
 
+  useSupabaseRealtime("bookings", loadLiveStats);
+  useSupabaseRealtime("visa_inquiries", loadLiveStats);
+  useSupabaseRealtime("tour_inquiries", loadLiveStats);
+
+  useEffect(() => {
     loadLiveStats();
 
-    // Real-time subscription for bookings
-    const supabase = createClient();
-    const channel = supabase
-      .channel("admin-bookings-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => {
-        loadLiveStats();
-      })
-      .subscribe();
+    const handleUpdate = () => loadLiveStats();
+    window.addEventListener("storage", handleUpdate);
+    window.addEventListener("isbah_data_updated", handleUpdate);
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      window.removeEventListener("storage", handleUpdate);
+      window.removeEventListener("isbah_data_updated", handleUpdate);
+    };
   }, []);
 
   const cards = [

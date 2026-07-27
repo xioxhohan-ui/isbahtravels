@@ -269,4 +269,216 @@ export const apiService = {
     }
     return true;
   },
+
+  // SAVED FAVORITES API
+  async getSavedItems(userId?: string): Promise<any[]> {
+    let items: any[] = [];
+    if (isSupabaseConfigured() && userId) {
+      try {
+        const supabase = getClient();
+        const { data, error } = await supabase
+          .from("saved_items")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false });
+        if (!error && data) {
+          items = data;
+        }
+      } catch (err) {
+        console.warn("Error fetching saved_items from Supabase", err);
+      }
+    }
+    let localSaved: any[] = [];
+    if (typeof window !== "undefined") {
+      try {
+        localSaved = JSON.parse(localStorage.getItem("isbah_saved_favorites") || "[]");
+      } catch {}
+    }
+    const combined = [...localSaved, ...items];
+    const uniqueMap = new Map<string, any>();
+    combined.forEach(item => uniqueMap.set(item.id || `${item.entity_type}-${item.entity_id}`, item));
+    return Array.from(uniqueMap.values());
+  },
+
+  async saveItem(item: { user_id?: string; entity_type: 'hotel' | 'tour' | 'flight'; entity_id: string; title: string; subtitle?: string; image?: string; price?: number; url?: string }): Promise<any> {
+    const newItem = {
+      id: `fav-${Date.now()}`,
+      user_id: item.user_id || "usr-demo",
+      entity_type: item.entity_type,
+      entity_id: item.entity_id,
+      title: item.title,
+      subtitle: item.subtitle || "",
+      image: item.image || "",
+      price: item.price || 0,
+      url: item.url || "#",
+      created_at: new Date().toISOString(),
+    };
+
+    if (typeof window !== "undefined") {
+      try {
+        const existing: any[] = JSON.parse(localStorage.getItem("isbah_saved_favorites") || "[]");
+        const filtered = existing.filter(i => !(i.entity_type === newItem.entity_type && i.entity_id === newItem.entity_id));
+        localStorage.setItem("isbah_saved_favorites", JSON.stringify([newItem, ...filtered]));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+      } catch {}
+    }
+
+    if (isSupabaseConfigured() && item.user_id) {
+      try {
+        const supabase = getClient();
+        await supabase.from("saved_items").upsert({
+          user_id: item.user_id,
+          entity_type: item.entity_type,
+          entity_id: item.entity_id,
+        });
+      } catch (err) {
+        console.warn("Error saving favorite to Supabase", err);
+      }
+    }
+    return newItem;
+  },
+
+  async removeSavedItem(id: string, entityType?: string, entityId?: string): Promise<boolean> {
+    if (typeof window !== "undefined") {
+      try {
+        const existing: any[] = JSON.parse(localStorage.getItem("isbah_saved_favorites") || "[]");
+        const filtered = existing.filter(i => i.id !== id && !(i.entity_type === entityType && i.entity_id === entityId));
+        localStorage.setItem("isbah_saved_favorites", JSON.stringify(filtered));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+      } catch {}
+    }
+
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        if (id && !id.startsWith("fav-")) {
+          await supabase.from("saved_items").delete().eq("id", id);
+        } else if (entityId) {
+          await supabase.from("saved_items").delete().eq("entity_id", entityId);
+        }
+      } catch (err) {
+        console.warn("Error deleting saved item from Supabase", err);
+      }
+    }
+    return true;
+  },
+
+  // USER REVIEWS API
+  async getUserReviews(userId?: string): Promise<any[]> {
+    let dbReviews: any[] = [];
+    if (isSupabaseConfigured() && userId) {
+      try {
+        const supabase = getClient();
+        const { data: hReviews } = await supabase
+          .from("hotel_reviews")
+          .select("*, hotels(name)")
+          .eq("user_id", userId);
+
+        const { data: tReviews } = await supabase
+          .from("tour_reviews")
+          .select("*, tours(title)")
+          .eq("user_id", userId);
+
+        if (hReviews) {
+          hReviews.forEach((r: any) => {
+            dbReviews.push({
+              id: r.id,
+              user_id: r.user_id,
+              target_type: "hotel",
+              target_id: r.hotel_id,
+              target_title: r.hotels?.name || "Hotel Review",
+              rating: r.rating,
+              comment: r.comment,
+              created_at: r.created_at,
+            });
+          });
+        }
+        if (tReviews) {
+          tReviews.forEach((r: any) => {
+            dbReviews.push({
+              id: r.id,
+              user_id: r.user_id,
+              target_type: "tour",
+              target_id: r.tour_id,
+              target_title: r.tours?.title || "Tour Review",
+              rating: r.rating,
+              comment: r.comment,
+              created_at: r.created_at,
+            });
+          });
+        }
+      } catch (err) {
+        console.warn("Error loading user reviews from Supabase", err);
+      }
+    }
+
+    let localReviews: any[] = [];
+    if (typeof window !== "undefined") {
+      try {
+        localReviews = JSON.parse(localStorage.getItem("isbah_user_reviews") || "[]");
+      } catch {}
+    }
+
+    const combined = [...localReviews, ...dbReviews];
+    const uniqueMap = new Map<string, any>();
+    combined.forEach(r => uniqueMap.set(r.id, r));
+    return Array.from(uniqueMap.values()).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  },
+
+  async addReview(review: { user_id?: string; target_type: 'hotel' | 'tour'; target_id?: string; target_title: string; rating: number; comment: string }): Promise<any> {
+    const newReview = {
+      ...review,
+      id: `rev-${Date.now()}`,
+      created_at: new Date().toISOString(),
+    };
+
+    if (typeof window !== "undefined") {
+      try {
+        const existing: any[] = JSON.parse(localStorage.getItem("isbah_user_reviews") || "[]");
+        localStorage.setItem("isbah_user_reviews", JSON.stringify([newReview, ...existing]));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+      } catch {}
+    }
+
+    if (isSupabaseConfigured() && review.user_id && review.target_id) {
+      try {
+        const supabase = getClient();
+        const table = review.target_type === "hotel" ? "hotel_reviews" : "tour_reviews";
+        const fkField = review.target_type === "hotel" ? "hotel_id" : "tour_id";
+        await supabase.from(table).insert({
+          user_id: review.user_id,
+          [fkField]: review.target_id,
+          rating: review.rating,
+          comment: review.comment,
+        });
+      } catch (err) {
+        console.warn("Error inserting review into Supabase", err);
+      }
+    }
+    return newReview;
+  },
+
+  async deleteReview(id: string, targetType?: string): Promise<boolean> {
+    if (typeof window !== "undefined") {
+      try {
+        const existing: any[] = JSON.parse(localStorage.getItem("isbah_user_reviews") || "[]");
+        const filtered = existing.filter(r => r.id !== id);
+        localStorage.setItem("isbah_user_reviews", JSON.stringify(filtered));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+      } catch {}
+    }
+
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        if (!id.startsWith("rev-")) {
+          const table = targetType === "tour" ? "tour_reviews" : "hotel_reviews";
+          await supabase.from(table).delete().eq("id", id);
+        }
+      } catch (err) {
+        console.warn("Error deleting review from Supabase", err);
+      }
+    }
+    return true;
+  },
 };

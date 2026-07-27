@@ -4,14 +4,22 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 
-export function useSupabaseRealtime(table: string, queryKey: string[]) {
-  const queryClient = useQueryClient();
+export function useSupabaseRealtime(
+  table: string,
+  queryKeyOrCallback?: string[] | (() => void),
+  callback?: () => void
+) {
+  let queryClient: any = null;
+  try {
+    queryClient = useQueryClient();
+  } catch {}
 
   useEffect(() => {
-    const supabase = createClient();
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return;
 
+    const supabase = createClient();
     const channel = supabase
-      .channel(`realtime_${table}`)
+      .channel(`realtime_${table}_${Math.random()}`)
       .on(
         "postgres_changes",
         {
@@ -19,9 +27,19 @@ export function useSupabaseRealtime(table: string, queryKey: string[]) {
           schema: "public",
           table: table,
         },
-        (payload) => {
-          // Invalidate React Query cache to push real-time changes immediately
-          queryClient.invalidateQueries({ queryKey });
+        () => {
+          if (typeof queryKeyOrCallback === "function") {
+            queryKeyOrCallback();
+          } else if (Array.isArray(queryKeyOrCallback) && queryClient) {
+            queryClient.invalidateQueries({ queryKey: queryKeyOrCallback });
+          }
+          if (typeof callback === "function") {
+            callback();
+          }
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent(`isbah_${table}_updated`));
+            window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+          }
         }
       )
       .subscribe();
@@ -29,5 +47,5 @@ export function useSupabaseRealtime(table: string, queryKey: string[]) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [table, queryKey, queryClient]);
+  }, [table, queryKeyOrCallback, callback]);
 }

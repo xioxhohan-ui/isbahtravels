@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useSupabaseRealtime } from "@/lib/hooks/use-supabase-realtime";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PhoneCall, CheckCircle2, FileCheck, Compass } from "lucide-react";
+import { PhoneCall, CheckCircle2, FileCheck, Compass, Loader2 } from "lucide-react";
 
 interface InquiryItem {
   id: string;
@@ -17,33 +19,114 @@ interface InquiryItem {
 }
 
 export default function AdminInquiriesPage() {
-  const [inquiries, setInquiries] = useState<InquiryItem[]>([
-    {
-      id: "inq-1",
-      type: "visa",
-      name: "Tariqul Islam",
-      phone: "+880 1711-998877",
-      email: "tariq@example.com",
-      details: "Saudi Arabia Umrah Visa Assistance for 4 Family Members",
-      status: "new",
-      date: "2026-07-25 10:45 AM",
-    },
-    {
-      id: "inq-2",
-      type: "tour",
-      name: "Nusrat Jahan",
-      phone: "+880 1819-334455",
-      email: "nusrat@example.com",
-      details: "Customization inquiry for Cox's Bazar 3D2N Package",
-      status: "new",
-      date: "2026-07-25 09:15 AM",
-    },
-  ]);
+  const [inquiries, setInquiries] = useState<InquiryItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const updateStatus = (id: string, newStatus: "contacted" | "closed") => {
+  async function loadInquiries() {
+    let list: InquiryItem[] = [];
+
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      try {
+        const supabase = createClient();
+        const [visaRes, tourRes] = await Promise.all([
+          supabase.from("visa_inquiries").select("*").order("created_at", { ascending: false }),
+          supabase.from("tour_inquiries").select("*").order("created_at", { ascending: false }),
+        ]);
+
+        if (visaRes.data) {
+          visaRes.data.forEach((v: any) => {
+            list.push({
+              id: v.id,
+              type: "visa",
+              name: v.name,
+              phone: v.phone,
+              email: v.email,
+              details: v.additional_requirements || `Preferred Date: ${v.preferred_date || "Flexible"}`,
+              status: v.status || "new",
+              date: new Date(v.created_at).toLocaleString(),
+            });
+          });
+        }
+
+        if (tourRes.data) {
+          tourRes.data.forEach((t: any) => {
+            list.push({
+              id: t.id,
+              type: "tour",
+              name: t.name,
+              phone: t.phone,
+              email: t.email,
+              details: t.additional_requirements || `Journey Date: ${t.preferred_date || "Flexible"}`,
+              status: t.status || "new",
+              date: new Date(t.created_at).toLocaleString(),
+            });
+          });
+        }
+      } catch (err) {
+        console.warn("Error fetching inquiries from Supabase", err);
+      }
+    }
+
+    // Add fallback sample inquiries if DB is empty
+    if (list.length === 0) {
+      list = [
+        {
+          id: "inq-1",
+          type: "visa",
+          name: "Tariqul Islam",
+          phone: "+880 1711-998877",
+          email: "tariq@example.com",
+          details: "Saudi Arabia Umrah Visa Assistance for 4 Family Members",
+          status: "new",
+          date: new Date().toLocaleString(),
+        },
+        {
+          id: "inq-2",
+          type: "tour",
+          name: "Nusrat Jahan",
+          phone: "+880 1819-334455",
+          email: "nusrat@example.com",
+          details: "Customization inquiry for Cox's Bazar 3D2N Package",
+          status: "new",
+          date: new Date().toLocaleString(),
+        },
+      ];
+    }
+
+    setInquiries(list);
+    setLoading(false);
+  }
+
+  useSupabaseRealtime("visa_inquiries", loadInquiries);
+  useSupabaseRealtime("tour_inquiries", loadInquiries);
+
+  useEffect(() => {
+    loadInquiries();
+
+    const handleUpdate = () => loadInquiries();
+    window.addEventListener("storage", handleUpdate);
+    window.addEventListener("isbah_data_updated", handleUpdate);
+
+    return () => {
+      window.removeEventListener("storage", handleUpdate);
+      window.removeEventListener("isbah_data_updated", handleUpdate);
+    };
+  }, []);
+
+  const updateStatus = async (inq: InquiryItem, newStatus: "contacted" | "closed") => {
     setInquiries(prev =>
-      prev.map(item => (item.id === id ? { ...item, status: newStatus } : item))
+      prev.map(item => (item.id === inq.id ? { ...item, status: newStatus } : item))
     );
+
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && !inq.id.startsWith("inq-")) {
+      try {
+        const supabase = createClient();
+        const table = inq.type === "visa" ? "visa_inquiries" : "tour_inquiries";
+        await supabase.from(table).update({ status: newStatus }).eq("id", inq.id);
+      } catch (err) {
+        console.warn("Status update error", err);
+      }
+    }
   };
 
   return (
@@ -52,7 +135,7 @@ export default function AdminInquiriesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           <h1 className="font-outfit text-2xl font-black text-slate-900">Manage Inquiries & Callbacks</h1>
-          <p className="text-xs text-slate-500 font-semibold">View customer visa assistance forms and tour callback requests.</p>
+          <p className="text-xs text-slate-500 font-semibold">View live customer visa assistance forms and tour callback requests from Supabase.</p>
         </div>
       </div>
 
@@ -69,7 +152,14 @@ export default function AdminInquiriesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-semibold text-slate-800">
-              {inquiries.map((inq) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center text-slate-500 font-bold">
+                    <Loader2 className="h-5 w-5 animate-spin mx-auto text-emerald-700 mb-1" />
+                    <span>Loading Inquiries...</span>
+                  </td>
+                </tr>
+              ) : inquiries.map((inq) => (
                 <tr key={inq.id} className="hover:bg-slate-50">
                   <td className="p-4">
                     <div className="flex items-center gap-2">
@@ -80,7 +170,7 @@ export default function AdminInquiriesPage() {
                       )}
                       <div>
                         <span className="font-bold text-slate-900 block">{inq.name}</span>
-                        <span className="text-[10px] uppercase font-bold text-slate-400">{inq.type} Request</span>
+                        <span className="text-[10px] uppercase font-bold text-slate-400">{inq.type} Request • {inq.date}</span>
                       </div>
                     </div>
                   </td>
@@ -100,19 +190,23 @@ export default function AdminInquiriesPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => updateStatus(inq.id, "contacted")}
-                          className="text-xs font-bold rounded-xl"
+                          onClick={() => updateStatus(inq, "contacted")}
+                          className="font-bold text-[11px] gap-1 rounded-xl text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100"
                         >
-                          Mark Contacted
+                          <PhoneCall className="h-3 w-3" />
+                          <span>Mark Contacted</span>
                         </Button>
                       )}
+
                       {inq.status !== "closed" && (
                         <Button
                           size="sm"
-                          onClick={() => updateStatus(inq.id, "closed")}
-                          className="text-xs font-bold rounded-xl"
+                          variant="outline"
+                          onClick={() => updateStatus(inq, "closed")}
+                          className="font-bold text-[11px] gap-1 rounded-xl text-emerald-700 border-emerald-200 bg-emerald-50 hover:bg-emerald-100"
                         >
-                          Close Inquiry
+                          <CheckCircle2 className="h-3 w-3" />
+                          <span>Close</span>
                         </Button>
                       )}
                     </div>

@@ -7,11 +7,10 @@ import { formatBDT } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSupabaseRealtime } from "@/lib/hooks/use-supabase-realtime";
+import { apiService } from "@/lib/services/api";
 import { Ticket, Printer, RefreshCw, Loader2, CheckCircle2, XCircle } from "lucide-react";
 
 export default function AdminBookingsPage() {
-  useSupabaseRealtime("bookings", ["bookings"]);
-
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState("all");
@@ -19,21 +18,30 @@ export default function AdminBookingsPage() {
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
   async function loadData() {
-    setLoading(true);
     try {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("bookings")
-        .select("*")
-        .order("created_at", { ascending: false });
-      setBookings((data || []) as Booking[]);
+      const data = await apiService.getBookings();
+      setBookings(data);
     } catch (err) {
       console.warn("Bookings load error:", err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
-  useEffect(() => { loadData(); }, []);
+  useSupabaseRealtime("bookings", loadData);
+
+  useEffect(() => {
+    loadData();
+
+    const handleDataUpdate = () => loadData();
+    window.addEventListener("storage", handleDataUpdate);
+    window.addEventListener("isbah_data_updated", handleDataUpdate);
+
+    return () => {
+      window.removeEventListener("storage", handleDataUpdate);
+      window.removeEventListener("isbah_data_updated", handleDataUpdate);
+    };
+  }, []);
 
   const filteredBookings = filterStatus === "all"
     ? bookings
