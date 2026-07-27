@@ -551,12 +551,80 @@ export const apiService = {
   },
 
   // INQUIRIES API
-  async submitVisaInquiry(inquiry: Omit<VisaInquiry, "id" | "status" | "created_at">): Promise<boolean> {
+  async getVisaInquiries(): Promise<VisaInquiry[]> {
+    let dbInquiries: VisaInquiry[] = [];
     if (isSupabaseConfigured()) {
       try {
         const supabase = getClient();
-        const { error } = await supabase.from("visa_inquiries").insert([{ ...inquiry, status: "new" }]);
-        if (!error) return true;
+        const { data, error } = await withTimeout(supabase.from("visa_inquiries").select("*").order("created_at", { ascending: false }));
+        if (!error && data && data.length > 0) dbInquiries = data as VisaInquiry[];
+      } catch (err) {
+        console.warn("Supabase visa inquiries fetch error", err);
+      }
+    }
+    let localInquiries: VisaInquiry[] = [];
+    if (typeof window !== "undefined") {
+      try {
+        localInquiries = JSON.parse(localStorage.getItem("isbah_local_visa_inquiries") || "[]");
+      } catch {}
+    }
+    const mockInquiries: VisaInquiry[] = [
+      { id: "inq-1", name: "Rahim Chowdhury", phone: "+8801711223344", email: "rahim@gmail.com", preferred_date: "2026-08-20", status: "new", additional_requirements: "Saudi Arabia Umrah Visa Urgently Needed", created_at: new Date().toISOString() },
+      { id: "inq-2", name: "Tania Akter", phone: "+8801822334455", email: "tania@yahoo.com", preferred_date: "2026-09-01", status: "new", additional_requirements: "Dubai Tourist Express Visa", created_at: new Date().toISOString() },
+    ];
+    const combined = [...localInquiries, ...dbInquiries, ...mockInquiries];
+    const map = new Map<string, VisaInquiry>();
+    combined.forEach(i => map.set(i.id, i));
+    return Array.from(map.values());
+  },
+
+  async getTourInquiries(): Promise<TourInquiry[]> {
+    let dbInquiries: TourInquiry[] = [];
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        const { data, error } = await withTimeout(supabase.from("tour_inquiries").select("*").order("created_at", { ascending: false }));
+        if (!error && data && data.length > 0) dbInquiries = data as TourInquiry[];
+      } catch (err) {
+        console.warn("Supabase tour inquiries fetch error", err);
+      }
+    }
+    let localInquiries: TourInquiry[] = [];
+    if (typeof window !== "undefined") {
+      try {
+        localInquiries = JSON.parse(localStorage.getItem("isbah_local_tour_inquiries") || "[]");
+      } catch {}
+    }
+    const mockInquiries: TourInquiry[] = [
+      { id: "t-inq-1", name: "Tanvir Hasan", phone: "+8801933445566", email: "tanvir@gmail.com", journey_date: "2026-08-15", status: "new", additional_requirements: "Family Package Cox's Bazar 3N/4D", created_at: new Date().toISOString() }
+    ];
+    const combined = [...localInquiries, ...dbInquiries, ...mockInquiries];
+    const map = new Map<string, TourInquiry>();
+    combined.forEach(i => map.set(i.id, i));
+    return Array.from(map.values());
+  },
+
+  async submitVisaInquiry(inquiry: Omit<VisaInquiry, "id" | "status" | "created_at">): Promise<boolean> {
+    const newInquiry: VisaInquiry = {
+      ...inquiry,
+      id: `vinq-${Date.now()}`,
+      status: "new",
+      created_at: new Date().toISOString(),
+    };
+
+    if (typeof window !== "undefined") {
+      try {
+        const existing = JSON.parse(localStorage.getItem("isbah_local_visa_inquiries") || "[]");
+        localStorage.setItem("isbah_local_visa_inquiries", JSON.stringify([newInquiry, ...existing]));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        window.dispatchEvent(new CustomEvent("isbah_new_inquiry"));
+      } catch {}
+    }
+
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        await supabase.from("visa_inquiries").insert([newInquiry]);
       } catch (err) {
         console.warn("Supabase visa inquiry error", err);
       }
@@ -565,11 +633,26 @@ export const apiService = {
   },
 
   async submitTourInquiry(inquiry: Omit<TourInquiry, "id" | "status" | "created_at">): Promise<boolean> {
+    const newInquiry: TourInquiry = {
+      ...inquiry,
+      id: `tinq-${Date.now()}`,
+      status: "new",
+      created_at: new Date().toISOString(),
+    };
+
+    if (typeof window !== "undefined") {
+      try {
+        const existing = JSON.parse(localStorage.getItem("isbah_local_tour_inquiries") || "[]");
+        localStorage.setItem("isbah_local_tour_inquiries", JSON.stringify([newInquiry, ...existing]));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        window.dispatchEvent(new CustomEvent("isbah_new_inquiry"));
+      } catch {}
+    }
+
     if (isSupabaseConfigured()) {
       try {
         const supabase = getClient();
-        const { error } = await supabase.from("tour_inquiries").insert([{ ...inquiry, status: "new" }]);
-        if (!error) return true;
+        await supabase.from("tour_inquiries").insert([newInquiry]);
       } catch (err) {
         console.warn("Supabase tour inquiry error", err);
       }
