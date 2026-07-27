@@ -121,7 +121,12 @@ export default function HeroSearchTabs() {
 
   const handleSearchHotels = (e: React.FormEvent) => {
     e.preventDefault();
-    router.push(`/hotels?city=${encodeURIComponent(hotelCity)}`);
+    const roomsCount = roomConfigs.length;
+    const totalAdults = roomConfigs.reduce((sum, r) => sum + r.adults, 0);
+    const totalChildren = roomConfigs.reduce((sum, r) => sum + r.children, 0);
+    const roomsParam = `${roomsCount},${totalAdults},${totalChildren}`;
+
+    router.push(`/hotel/list?checkin=${checkIn}&checkout=${checkOut}&search=&location=${encodeURIComponent(hotelCity)}&rooms=${roomsParam}&child_ages=&sort=POPULARITY`);
   };
 
   const handleSearchTours = (e: React.FormEvent) => {
