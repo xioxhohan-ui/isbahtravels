@@ -19,26 +19,24 @@ async function getSupabaseServer() {
 }
 
 /**
- * GET /api/v1/hotels
- * Query params: city, star_rating, sort=rank
+ * GET /api/v1/visas
+ * Query params: country, sort=rank
  */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const city = searchParams.get("city");
-    const star_rating = searchParams.get("star_rating");
+    const country = searchParams.get("country");
     const sort = searchParams.get("sort");
 
     const supabase = await getSupabaseServer();
-    let query = supabase.from("hotels").select("*");
+    let query = supabase.from("visas").select("*");
 
-    if (city) query = query.ilike("city", `%${city}%`);
-    if (star_rating) query = query.gte("star_rating", Number(star_rating));
+    if (country) query = query.ilike("country", `%${country}%`);
 
     if (sort === "rank") {
       query = query.order("display_order", { ascending: false });
     } else {
-      query = query.order("star_rating", { ascending: false });
+      query = query.order("created_at", { ascending: false });
     }
 
     const { data, error } = await query;

@@ -20,13 +20,14 @@ async function getSupabaseServer() {
 
 /**
  * GET /api/v1/tours
- * Query params: category, search
+ * Query params: category, search, sort=rank
  */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
     const search = searchParams.get("search");
+    const sort = searchParams.get("sort");
 
     const supabase = await getSupabaseServer();
     let query = supabase.from("tours").select("*");
@@ -34,7 +35,13 @@ export async function GET(request: Request) {
     if (category && category !== "All") query = query.eq("category", category);
     if (search) query = query.ilike("title", `%${search}%`);
 
-    const { data, error } = await query.order("rating", { ascending: false });
+    if (sort === "rank") {
+      query = query.order("display_order", { ascending: false });
+    } else {
+      query = query.order("rating", { ascending: false });
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

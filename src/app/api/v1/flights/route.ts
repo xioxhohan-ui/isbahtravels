@@ -20,13 +20,14 @@ async function getSupabaseServer() {
 
 /**
  * GET /api/v1/flights
- * Query params: trip_type, class, from, to
+ * Query params: trip_type, class, from, to, sort=rank
  */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const trip_type = searchParams.get("trip_type");
     const flight_class = searchParams.get("class");
+    const sort = searchParams.get("sort");
 
     const supabase = await getSupabaseServer();
     let query = supabase.from("flights").select("*");
@@ -34,7 +35,13 @@ export async function GET(request: Request) {
     if (trip_type) query = query.eq("trip_type", trip_type);
     if (flight_class) query = query.eq("class", flight_class);
 
-    const { data, error } = await query.order("price", { ascending: true });
+    if (sort === "rank") {
+      query = query.order("display_order", { ascending: false });
+    } else {
+      query = query.order("price", { ascending: true });
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
