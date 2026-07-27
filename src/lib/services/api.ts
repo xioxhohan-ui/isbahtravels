@@ -21,6 +21,13 @@ function getClient() {
   return createClient();
 }
 
+function withTimeout<T>(promise: PromiseLike<T>, ms = 2500): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("Network timeout")), ms)),
+  ]);
+}
+
 export const apiService = {
   // FLIGHTS API
   async getFlights(filters?: { from?: string; to?: string; trip_type?: string; class?: string }): Promise<Flight[]> {
@@ -30,7 +37,7 @@ export const apiService = {
         let query = supabase.from("flights").select("*");
         if (filters?.trip_type) query = query.eq("trip_type", filters.trip_type);
         if (filters?.class) query = query.eq("class", filters.class);
-        const { data, error } = await query;
+        const { data, error } = await withTimeout(query);
         if (!error && data && data.length > 0) return data as Flight[];
       } catch (err) {
         console.warn("Supabase fetch failed, fallback to mock flights", err);

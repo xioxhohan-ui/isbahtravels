@@ -73,7 +73,11 @@ function ProfileContent() {
 
       if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
         const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        const authRes: any = await Promise.race([
+          supabase.auth.getUser(),
+          new Promise((resolve) => setTimeout(() => resolve({ data: { user: null } }), 2000)),
+        ]);
+        const user = authRes?.data?.user;
 
         if (user) {
           currentUid = user.id;
