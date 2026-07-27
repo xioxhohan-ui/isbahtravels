@@ -24,7 +24,8 @@ import {
   X,
   CreditCard,
   User,
-  Trash2
+  Trash2,
+  Star,
 } from "lucide-react";
 
 export default function AdminBookingsPage() {
@@ -60,6 +61,22 @@ export default function AdminBookingsPage() {
       window.removeEventListener("isbah_data_updated", handleDataUpdate);
     };
   }, []);
+
+  const handleToggleStarBooking = async (booking: Booking) => {
+    const updated = { ...booking, is_starred: !booking.is_starred };
+    setBookings(prev => prev.map(b => b.id === booking.id ? updated : b));
+    if (typeof window !== "undefined") {
+      try {
+        const local = JSON.parse(localStorage.getItem("isbah_local_bookings") || "[]");
+        const idx = local.findIndex((b: any) => b.id === booking.id);
+        if (idx !== -1) {
+          local[idx] = updated;
+          localStorage.setItem("isbah_local_bookings", JSON.stringify(local));
+          window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        }
+      } catch {}
+    }
+  };
 
   const filteredBookings = filterStatus === "all"
     ? bookings
@@ -229,7 +246,18 @@ export default function AdminBookingsPage() {
                 const phoneNum = b.details?.customer_phone || b.details?.phone || "+880 1711-998877";
                 return (
                   <tr key={b.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-4 font-bold text-slate-900 font-mono text-[10px]">{b.id?.slice(0, 12)}</td>
+                    <td className="p-4 font-bold text-slate-900 font-mono text-[10px]">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleToggleStarBooking(b)}
+                          title="Star / Favorite Booking"
+                          className="p-1 rounded hover:bg-amber-50"
+                        >
+                          <Star className={`h-4 w-4 ${b.is_starred ? "fill-amber-400 text-amber-500" : "text-slate-300"}`} />
+                        </button>
+                        <span>{b.id?.slice(0, 12)}</span>
+                      </div>
+                    </td>
                     <td className="p-4">
                       <span className="font-bold block text-slate-900">{b.details?.title || b.details?.airline || "Reservation"}</span>
                       <span className="text-[10px] text-slate-400 uppercase font-bold">{b.booking_type}</span>

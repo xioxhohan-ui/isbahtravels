@@ -7,7 +7,7 @@ import { Visa } from "@/lib/types/database";
 import { formatBDT, detectCountryFlagUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileCheck, Plus, Edit3, Trash2, Clock, X } from "lucide-react";
+import { FileCheck, Plus, Edit3, Trash2, Clock, X, Star } from "lucide-react";
 
 export default function AdminVisasPage() {
   const [visas, setVisas] = useState<Visa[]>([]);
@@ -21,6 +21,9 @@ export default function AdminVisasPage() {
   const [processingTime, setProcessingTime] = useState("3 - 5 Days");
   const [fee, setFee] = useState(7500);
   const [postingDate, setPostingDate] = useState(new Date().toISOString().split("T")[0]);
+  const [showOnHomepage, setShowOnHomepage] = useState(true);
+  const [isStarred, setIsStarred] = useState(false);
+  const [rankPriority, setRankPriority] = useState(50);
 
   useEffect(() => {
     async function loadVisas() {
@@ -39,6 +42,9 @@ export default function AdminVisasPage() {
     setProcessingTime("3 - 5 Working Days");
     setFee(7500);
     setPostingDate(new Date().toISOString().split("T")[0]);
+    setShowOnHomepage(true);
+    setIsStarred(false);
+    setRankPriority(50);
     setIsModalOpen(true);
   };
 
@@ -49,7 +55,16 @@ export default function AdminVisasPage() {
     setProcessingTime(visa.processing_time);
     setFee(visa.fee);
     setPostingDate((visa as any).created_at ? (visa as any).created_at.split("T")[0] : new Date().toISOString().split("T")[0]);
+    setShowOnHomepage(visa.show_on_homepage !== false);
+    setIsStarred(Boolean(visa.is_starred));
+    setRankPriority(visa.rank_priority || 50);
     setIsModalOpen(true);
+  };
+
+  const handleToggleStarVisa = async (visa: Visa) => {
+    const updated = { ...visa, is_starred: !visa.is_starred };
+    await apiService.saveVisa(updated);
+    setVisas(prev => prev.map(v => v.id === visa.id ? updated : v));
   };
 
   const handleDelete = async (id: string) => {
@@ -71,6 +86,10 @@ export default function AdminVisasPage() {
       fee: Number(fee),
       currency: "BDT",
       flag_url: computedFlagUrl,
+      show_on_homepage: showOnHomepage,
+      is_starred: isStarred,
+      rank_priority: Number(rankPriority),
+      created_at: new Date(postingDate).toISOString(),
       add_on_services: editingVisa?.add_on_services || ["Express File Check"],
       important_notes: editingVisa?.important_notes || "Valid passport required.",
       documents_required: editingVisa?.documents_required || {
@@ -115,8 +134,19 @@ export default function AdminVisasPage() {
             <div key={visa.id} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs space-y-3 flex flex-col justify-between">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-slate-900 text-base">{visa.country}</h3>
-                  <Image src={visa.flag_url || detectCountryFlagUrl(visa.country)} alt={visa.country} width={28} height={18} className="h-4 w-6 object-cover rounded shadow-xs border border-slate-200" />
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => handleToggleStarVisa(visa)} title="Star / Favorite Visa">
+                      <Star className={`h-4 w-4 ${visa.is_starred ? "fill-amber-400 text-amber-500" : "text-slate-300"}`} />
+                    </button>
+                    <h3 className="font-bold text-slate-900 text-base">{visa.country}</h3>
+                    {visa.show_on_homepage !== false && (
+                      <span className="text-[9px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded px-1">Homepage</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-slate-400">Rank: #{visa.rank_priority || 50}</span>
+                    <Image src={visa.flag_url || detectCountryFlagUrl(visa.country)} alt={visa.country} width={28} height={18} className="h-4 w-6 object-cover rounded shadow-xs border border-slate-200" />
+                  </div>
                 </div>
 
                 <Badge variant="outline" className="text-[10px] font-bold">{visa.visa_type}</Badge>
@@ -212,6 +242,43 @@ export default function AdminVisasPage() {
                     className="w-full rounded-xl border border-slate-200 p-2.5 font-bold outline-none text-xs"
                   />
                 </div>
+
+                <div>
+                  <label className="block font-bold text-slate-400 uppercase text-[10px] mb-1">Priority Ranking (1–100)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={rankPriority}
+                    onChange={(e) => setRankPriority(Number(e.target.value))}
+                    className="w-full rounded-xl border border-slate-200 p-2.5 font-bold outline-none text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-6 p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-bold">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showOnHomepage}
+                    onChange={(e) => setShowOnHomepage(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="text-slate-900">Show on Homepage</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isStarred}
+                    onChange={(e) => setIsStarred(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-400"
+                  />
+                  <span className="text-amber-800 flex items-center gap-1">
+                    <Star className={`h-3.5 w-3.5 ${isStarred ? "fill-amber-500 text-amber-500" : "text-slate-400"}`} />
+                    Star / Favorite Visa
+                  </span>
+                </label>
               </div>
 
               <div className="flex justify-between items-center gap-2 pt-3 border-t border-slate-100">

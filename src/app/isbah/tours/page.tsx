@@ -7,7 +7,7 @@ import { formatBDT } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSupabaseRealtime } from "@/lib/hooks/use-supabase-realtime";
-import { Compass, Plus, Edit3, Trash2, MapPin, Clock, X, RefreshCw } from "lucide-react";
+import { Compass, Plus, Edit3, Trash2, MapPin, Clock, X, RefreshCw, Star } from "lucide-react";
 
 export default function AdminToursPage() {
   // Enable Supabase Real-time postgres_changes subscription for tours
@@ -26,6 +26,9 @@ export default function AdminToursPage() {
   const [category, setCategory] = useState("Domestic");
   const [overview, setOverview] = useState("");
   const [travelDate, setTravelDate] = useState(new Date().toISOString().split("T")[0]);
+  const [showOnHomepage, setShowOnHomepage] = useState(true);
+  const [isStarred, setIsStarred] = useState(false);
+  const [rankPriority, setRankPriority] = useState(50);
 
   useEffect(() => {
     async function loadTours() {
@@ -46,6 +49,9 @@ export default function AdminToursPage() {
     setCategory("Domestic");
     setOverview("Explore Jaflong, Ratargul Swamp Forest, and Sreemangal Tea Gardens.");
     setTravelDate(new Date().toISOString().split("T")[0]);
+    setShowOnHomepage(true);
+    setIsStarred(false);
+    setRankPriority(50);
     setIsModalOpen(true);
   };
 
@@ -58,7 +64,16 @@ export default function AdminToursPage() {
     setCategory(tour.category || "Domestic");
     setOverview(tour.overview);
     setTravelDate((tour as any).created_at ? (tour as any).created_at.split("T")[0] : new Date().toISOString().split("T")[0]);
+    setShowOnHomepage(tour.show_on_homepage !== false);
+    setIsStarred(Boolean(tour.is_starred));
+    setRankPriority(tour.rank_priority || 50);
     setIsModalOpen(true);
+  };
+
+  const handleToggleStarTour = async (tour: Tour) => {
+    const updated = { ...tour, is_starred: !tour.is_starred };
+    await apiService.saveTour(updated);
+    setTours(prev => prev.map(t => t.id === tour.id ? updated : t));
   };
 
   const handleDelete = async (id: string) => {
@@ -80,6 +95,10 @@ export default function AdminToursPage() {
       category: category as any,
       overview,
       description: overview,
+      show_on_homepage: showOnHomepage,
+      is_starred: isStarred,
+      rank_priority: Number(rankPriority),
+      created_at: new Date(travelDate).toISOString(),
       inclusions: editingTour?.inclusions || ["3-Star Hotel Stay", "Daily Breakfast", "Sightseeing Car Transfer"],
       exclusions: editingTour?.exclusions || ["Airfare / Bus Ticket", "Shopping"],
       requirements: editingTour?.requirements || ["Valid NID Copy"],
@@ -139,11 +158,16 @@ export default function AdminToursPage() {
             <div key={tour.id} className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-xs space-y-3 p-5 flex flex-col justify-between">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Badge variant="outline" className="text-[10px] font-bold">{tour.category || "Domestic"}</Badge>
-                  <span className="flex items-center gap-1 text-xs font-bold text-slate-500">
-                    <Clock className="h-3.5 w-3.5" />
-                    {tour.duration_days} Days
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => handleToggleStarTour(tour)} title="Star / Favorite Tour">
+                      <Star className={`h-4 w-4 ${tour.is_starred ? "fill-amber-400 text-amber-500" : "text-slate-300"}`} />
+                    </button>
+                    <Badge variant="outline" className="text-[10px] font-bold">{tour.category || "Domestic"}</Badge>
+                    {tour.show_on_homepage !== false && (
+                      <span className="text-[9px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded px-1">Homepage</span>
+                    )}
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-400">Rank: #{tour.rank_priority || 50}</span>
                 </div>
 
                 <h3 className="font-bold text-slate-900 text-base">{tour.title}</h3>
@@ -253,6 +277,43 @@ export default function AdminToursPage() {
                     className="w-full rounded-xl border border-slate-200 p-2.5 font-bold outline-none text-xs"
                   />
                 </div>
+
+                <div>
+                  <label className="block font-bold text-slate-400 uppercase text-[10px] mb-1">Priority Ranking (1–100)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={rankPriority}
+                    onChange={(e) => setRankPriority(Number(e.target.value))}
+                    className="w-full rounded-xl border border-slate-200 p-2.5 font-bold outline-none text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-6 p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-bold">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showOnHomepage}
+                    onChange={(e) => setShowOnHomepage(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="text-slate-900">Show on Homepage</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isStarred}
+                    onChange={(e) => setIsStarred(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-400"
+                  />
+                  <span className="text-amber-800 flex items-center gap-1">
+                    <Star className={`h-3.5 w-3.5 ${isStarred ? "fill-amber-500 text-amber-500" : "text-slate-400"}`} />
+                    Star / Favorite Tour
+                  </span>
+                </label>
               </div>
 
               <div>

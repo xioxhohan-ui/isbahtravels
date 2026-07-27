@@ -23,8 +23,8 @@ export default function HomePage() {
           apiService.getTours(),
           apiService.getHotels(),
         ]);
-        setFeaturedTours(tours);
-        setTopHotels(hotels);
+        setFeaturedTours(tours.filter(t => t.show_on_homepage !== false));
+        setTopHotels(hotels.filter(h => h.show_on_homepage !== false));
       } catch (err) {
         console.warn("Home page load error", err);
       } finally {

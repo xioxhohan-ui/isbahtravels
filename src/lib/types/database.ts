@@ -53,6 +53,9 @@ export interface Flight {
   max_travelers: number;
   logo_url?: string;
   stops?: number;
+  show_on_homepage?: boolean;
+  is_starred?: boolean;
+  rank_priority?: number;
   admin_created?: string;
   created_at?: string;
   updated_at?: string;
@@ -95,6 +98,9 @@ export interface Hotel {
   nearby: NearbyPlace[];
   rooms_count?: number;
   min_price?: number;
+  show_on_homepage?: boolean;
+  is_starred?: boolean;
+  rank_priority?: number;
   admin_created?: string;
   created_at?: string;
   updated_at?: string;
@@ -165,6 +171,9 @@ export interface Tour {
   discount?: number;
   rating?: number;
   reviews_count?: number;
+  show_on_homepage?: boolean;
+  is_starred?: boolean;
+  rank_priority?: number;
   admin_created?: string;
   created_at?: string;
   updated_at?: string;
@@ -198,6 +207,9 @@ export interface Visa {
   important_notes: string;
   documents_required: DocumentsRequired;
   contact_info: ContactInfo;
+  show_on_homepage?: boolean;
+  is_starred?: boolean;
+  rank_priority?: number;
   admin_created?: string;
   created_at?: string;
   updated_at?: string;
@@ -214,6 +226,9 @@ export interface Booking {
   payment_status: PaymentStatus;
   payment_details: Record<string, any>;
   booking_status: BookingStatus;
+  show_on_homepage?: boolean;
+  is_starred?: boolean;
+  rank_priority?: number;
   created_at: string;
   updated_at: string;
 }

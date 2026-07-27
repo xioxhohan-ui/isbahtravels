@@ -31,6 +31,9 @@ export default function AdminHotelsPage() {
   const [longitude, setLongitude] = useState(91.9804);
   const [autoCollecting, setAutoCollecting] = useState(false);
   const [availableDate, setAvailableDate] = useState(new Date().toISOString().split("T")[0]);
+  const [showOnHomepage, setShowOnHomepage] = useState(true);
+  const [isStarred, setIsStarred] = useState(false);
+  const [rankPriority, setRankPriority] = useState(50);
 
   useEffect(() => {
     async function loadHotels() {
@@ -54,6 +57,9 @@ export default function AdminHotelsPage() {
     setLatitude(21.4172);
     setLongitude(91.9804);
     setAvailableDate(new Date().toISOString().split("T")[0]);
+    setShowOnHomepage(true);
+    setIsStarred(false);
+    setRankPriority(50);
     setIsModalOpen(true);
   };
 
@@ -69,7 +75,16 @@ export default function AdminHotelsPage() {
     setLatitude(hotel.latitude || 21.4172);
     setLongitude(hotel.longitude || 91.9804);
     setAvailableDate((hotel as any).created_at ? (hotel as any).created_at.split("T")[0] : new Date().toISOString().split("T")[0]);
+    setShowOnHomepage(hotel.show_on_homepage !== false);
+    setIsStarred(Boolean(hotel.is_starred));
+    setRankPriority(hotel.rank_priority || 50);
     setIsModalOpen(true);
+  };
+
+  const handleToggleStarHotel = async (hotel: Hotel) => {
+    const updated = { ...hotel, is_starred: !hotel.is_starred };
+    await apiService.saveHotel(updated);
+    setHotels(prev => prev.map(h => h.id === hotel.id ? updated : h));
   };
 
   const handleDelete = async (id: string) => {
@@ -123,6 +138,10 @@ export default function AdminHotelsPage() {
       policies: editingHotel?.policies || { check_in_time: "02:00 PM", check_out_time: "12:00 PM" },
       discount: editingHotel?.discount || 10,
       nearby: fetchedNearby,
+      show_on_homepage: showOnHomepage,
+      is_starred: isStarred,
+      rank_priority: Number(rankPriority),
+      created_at: new Date(availableDate).toISOString(),
     };
 
     await apiService.saveHotel(hotelObj);
@@ -148,9 +167,7 @@ export default function AdminHotelsPage() {
               <RefreshCw className="h-3 w-3 animate-spin" /> Real-time Subscribed
             </span>
           </div>
-          <p className="text-xs text-slate-500 font-semibold">
-            Admin changes sync instantly across consoles. On save, triggers Google Places Nearby Search & auto-stores nearby places.
-          </p>
+          <p className="text-xs text-slate-500 font-semibold">Live inventory connected to Supabase Database.</p>
         </div>
         <Button onClick={handleOpenAddModal} size="sm" className="font-bold text-xs gap-1.5 rounded-xl">
           <Plus className="h-4 w-4" />
@@ -167,11 +184,16 @@ export default function AdminHotelsPage() {
             <div key={hotel.id} className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-xs space-y-3 p-5 flex flex-col justify-between">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Badge variant="outline" className="text-[10px] font-bold">{hotel.city}</Badge>
-                  <span className="flex items-center gap-1 text-xs font-bold text-amber-500">
-                    <Star className="h-3.5 w-3.5 fill-amber-400" />
-                    {hotel.star_rating} Star
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => handleToggleStarHotel(hotel)} title="Star / Favorite Hotel">
+                      <Star className={`h-4 w-4 ${hotel.is_starred ? "fill-amber-400 text-amber-500" : "text-slate-300"}`} />
+                    </button>
+                    <Badge variant="outline" className="text-[10px] font-bold">{hotel.city}</Badge>
+                    {hotel.show_on_homepage !== false && (
+                      <span className="text-[9px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded px-1">Homepage</span>
+                    )}
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-400">Rank: #{hotel.rank_priority || 50}</span>
                 </div>
 
                 <h3 className="font-bold text-slate-900 text-base">{hotel.name}</h3>
@@ -282,6 +304,43 @@ export default function AdminHotelsPage() {
                     className="w-full rounded-xl border border-slate-200 p-2.5 font-bold outline-none text-xs"
                   />
                 </div>
+
+                <div>
+                  <label className="block font-bold text-slate-400 uppercase text-[10px] mb-1">Priority Ranking (1–100)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={rankPriority}
+                    onChange={(e) => setRankPriority(Number(e.target.value))}
+                    className="w-full rounded-xl border border-slate-200 p-2.5 font-bold outline-none text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-6 p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-bold">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showOnHomepage}
+                    onChange={(e) => setShowOnHomepage(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="text-slate-900">Show on Homepage</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isStarred}
+                    onChange={(e) => setIsStarred(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-400"
+                  />
+                  <span className="text-amber-800 flex items-center gap-1">
+                    <Star className={`h-3.5 w-3.5 ${isStarred ? "fill-amber-500 text-amber-500" : "text-slate-400"}`} />
+                    Star / Favorite Hotel
+                  </span>
+                </label>
               </div>
 
               <div>

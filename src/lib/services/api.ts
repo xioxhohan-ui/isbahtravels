@@ -52,6 +52,18 @@ function filterDeleted<T extends { id: string }>(items: T[]): T[] {
   return items.filter(item => !deleted.has(item.id));
 }
 
+function sortByRankAndStar<T extends { is_starred?: boolean; rank_priority?: number }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    const starA = a.is_starred ? 1 : 0;
+    const starB = b.is_starred ? 1 : 0;
+    if (starA !== starB) return starB - starA;
+
+    const rankA = typeof a.rank_priority === "number" ? a.rank_priority : 50;
+    const rankB = typeof b.rank_priority === "number" ? b.rank_priority : 50;
+    return rankB - rankA;
+  });
+}
+
 export const apiService = {
   // FLIGHTS API
   async getFlights(filters?: { from?: string; to?: string; trip_type?: string; class?: string }): Promise<Flight[]> {
@@ -92,7 +104,7 @@ export const apiService = {
     if (filters?.class) {
       result = result.filter(f => f.class === filters.class);
     }
-    return filterDeleted(result);
+    return sortByRankAndStar(filterDeleted(result));
   },
 
   async getFlightById(id: string): Promise<Flight | null> {
@@ -189,7 +201,7 @@ export const apiService = {
     if (filters?.star_rating) {
       result = result.filter(h => h.star_rating >= filters.star_rating!);
     }
-    return filterDeleted(result);
+    return sortByRankAndStar(filterDeleted(result));
   },
 
   async getHotelById(id: string): Promise<Hotel | null> {
@@ -300,7 +312,7 @@ export const apiService = {
       const q = filters.search.toLowerCase();
       result = result.filter(t => t.title.toLowerCase().includes(q) || t.location.toLowerCase().includes(q));
     }
-    return filterDeleted(result);
+    return sortByRankAndStar(filterDeleted(result));
   },
 
   async getTourById(id: string): Promise<Tour | null> {
@@ -394,7 +406,7 @@ export const apiService = {
       const q = searchCountry.toLowerCase();
       result = result.filter(v => v.country.toLowerCase().includes(q));
     }
-    return filterDeleted(result);
+    return sortByRankAndStar(filterDeleted(result));
   },
 
   async getVisaById(id: string): Promise<Visa | null> {
@@ -484,7 +496,7 @@ export const apiService = {
     const combined = [...localSaved, ...dbBookings, ...MOCK_BOOKINGS];
     const uniqueMap = new Map<string, Booking>();
     combined.forEach((b) => uniqueMap.set(b.id, b));
-    return filterDeleted(Array.from(uniqueMap.values()));
+    return sortByRankAndStar(filterDeleted(Array.from(uniqueMap.values())));
   },
 
   async createBooking(bookingData: Partial<Booking>): Promise<Booking> {

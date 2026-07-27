@@ -8,7 +8,7 @@ import { formatBDT } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSupabaseRealtime } from "@/lib/hooks/use-supabase-realtime";
-import { Plane, Plus, Edit3, Trash2, X, RefreshCw } from "lucide-react";
+import { Plane, Plus, Edit3, Trash2, X, RefreshCw, Star } from "lucide-react";
 
 export default function AdminFlightsPage() {
   const queryClient = useQueryClient();
@@ -40,6 +40,9 @@ export default function AdminFlightsPage() {
   const [price, setPrice] = useState(4800);
   const [seats, setSeats] = useState(25);
   const [flightDate, setFlightDate] = useState(new Date().toISOString().split("T")[0]);
+  const [showOnHomepage, setShowOnHomepage] = useState(true);
+  const [isStarred, setIsStarred] = useState(false);
+  const [rankPriority, setRankPriority] = useState(50);
 
   const handleOpenAddModal = () => {
     setEditingFlight(null);
@@ -48,6 +51,9 @@ export default function AdminFlightsPage() {
     setPrice(5200);
     setSeats(20);
     setFlightDate(new Date().toISOString().split("T")[0]);
+    setShowOnHomepage(true);
+    setIsStarred(false);
+    setRankPriority(50);
     setIsModalOpen(true);
   };
 
@@ -62,7 +68,17 @@ export default function AdminFlightsPage() {
     setPrice(flight.price);
     setSeats(flight.available_seats);
     setFlightDate(flight.segments[0]?.departure_date || new Date().toISOString().split("T")[0]);
+    setShowOnHomepage(flight.show_on_homepage !== false);
+    setIsStarred(Boolean(flight.is_starred));
+    setRankPriority(flight.rank_priority || 50);
     setIsModalOpen(true);
+  };
+
+  const handleToggleStarFlight = async (flight: Flight) => {
+    const updated = { ...flight, is_starred: !flight.is_starred };
+    await apiService.saveFlight(updated);
+    setFlights(prev => prev.map(f => f.id === flight.id ? updated : f));
+    queryClient.invalidateQueries({ queryKey: ["flights"] });
   };
 
   const handleDelete = async (id: string) => {
@@ -85,6 +101,9 @@ export default function AdminFlightsPage() {
       currency: "BDT",
       available_seats: Number(seats),
       max_travelers: 9,
+      show_on_homepage: showOnHomepage,
+      is_starred: isStarred,
+      rank_priority: Number(rankPriority),
       segments: [{ from: fromAirport, to: toAirport, departure_date: flightDate, duration: "1h 10m" }],
     };
 
@@ -140,7 +159,24 @@ export default function AdminFlightsPage() {
               ) : flights.map((flight) => (
                 <tr key={flight.id} className="hover:bg-slate-50">
                   <td className="p-4 font-bold text-slate-900">
-                    {flight.airline} ({flight.flight_number})
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleStarFlight(flight)}
+                        title="Star / Favorite Flight"
+                        className="p-1 rounded-md hover:bg-amber-50"
+                      >
+                        <Star className={`h-4 w-4 ${flight.is_starred ? "fill-amber-400 text-amber-500" : "text-slate-300"}`} />
+                      </button>
+                      <div>
+                        <span>{flight.airline} ({flight.flight_number})</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[10px] text-slate-400 font-bold">Rank: #{flight.rank_priority || 50}</span>
+                          {flight.show_on_homepage !== false && (
+                            <span className="text-[9px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded px-1">Homepage</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </td>
                   <td className="p-4">
                     {flight.segments[0]?.from} ➔ {flight.segments[0]?.to}
@@ -258,6 +294,43 @@ export default function AdminFlightsPage() {
                     className="w-full rounded-xl border border-slate-200 p-2.5 font-bold outline-none text-xs"
                   />
                 </div>
+
+                <div>
+                  <label className="block font-bold text-slate-400 uppercase text-[10px] mb-1">Priority Ranking (1–100)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={rankPriority}
+                    onChange={(e) => setRankPriority(Number(e.target.value))}
+                    className="w-full rounded-xl border border-slate-200 p-2.5 font-bold outline-none text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-6 p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs font-bold">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showOnHomepage}
+                    onChange={(e) => setShowOnHomepage(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="text-slate-900">Show on Homepage</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isStarred}
+                    onChange={(e) => setIsStarred(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-400"
+                  />
+                  <span className="text-amber-800 flex items-center gap-1">
+                    <Star className={`h-3.5 w-3.5 ${isStarred ? "fill-amber-500 text-amber-500" : "text-slate-400"}`} />
+                    Star / Favorite Item
+                  </span>
+                </label>
               </div>
 
               <div className="flex justify-between items-center gap-2 pt-3 border-t border-slate-100">
