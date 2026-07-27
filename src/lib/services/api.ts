@@ -187,10 +187,18 @@ export const apiService = {
       currency: "BDT",
       payment_status: bookingData.payment_status || "pending",
       payment_details: bookingData.payment_details || {},
-      booking_status: bookingData.booking_status || "pending",
+      booking_status: bookingData.booking_status || "confirmed",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
+
+    // Always cache locally for instant client-side rendering
+    if (typeof window !== "undefined") {
+      try {
+        const existing = JSON.parse(localStorage.getItem("isbah_local_bookings") || "[]");
+        localStorage.setItem("isbah_local_bookings", JSON.stringify([newBooking, ...existing]));
+      } catch {}
+    }
 
     if (isSupabaseConfigured()) {
       try {
@@ -204,6 +212,35 @@ export const apiService = {
 
     MOCK_BOOKINGS.unshift(newBooking);
     return newBooking;
+  },
+
+  async getUserBookings(userId: string): Promise<Booking[]> {
+    let supabaseBookings: Booking[] = [];
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        const { data, error } = await supabase
+          .from("bookings")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false });
+        if (!error && data) supabaseBookings = data as Booking[];
+      } catch (err) {
+        console.warn("Supabase user bookings error", err);
+      }
+    }
+
+    let localSaved: Booking[] = [];
+    if (typeof window !== "undefined") {
+      try {
+        localSaved = JSON.parse(localStorage.getItem("isbah_local_bookings") || "[]");
+      } catch {}
+    }
+
+    const combined = [...localSaved, ...supabaseBookings, ...MOCK_BOOKINGS.filter(b => b.user_id === userId || !userId || b.user_id === "usr-demo")];
+    const uniqueMap = new Map<string, Booking>();
+    combined.forEach(b => uniqueMap.set(b.id, b));
+    return Array.from(uniqueMap.values());
   },
 
   // INQUIRIES API

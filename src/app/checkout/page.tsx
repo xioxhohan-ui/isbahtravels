@@ -2,11 +2,8 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { formatBDT } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { CreditCard, AlertCircle, ShieldCheck, Loader2 } from "lucide-react";
+import { apiService } from "@/lib/services/api";
+import { CreditCard, AlertCircle, ShieldCheck, Loader2, CheckCircle2, ShoppingBag } from "lucide-react";
 
 function CheckoutContent() {
   const searchParams = useSearchParams();
@@ -35,39 +32,28 @@ function CheckoutContent() {
     async function loadUserProfile() {
       setProfileLoading(true);
 
-      if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-        setProfileLoading(false);
-        return;
-      }
-
       try {
         const supabase = createClient();
         const { data: { user }, error } = await supabase.auth.getUser();
 
-        if (error || !user) {
-          // Not authenticated — redirect to sign in
-          const fullPath = `${pathname}?${searchParams.toString()}`;
-          router.push(`/signin?redirect=${encodeURIComponent(fullPath)}`);
-          return;
-        }
+        if (user) {
+          setUserId(user.id);
+          // Fetch profile to auto-fill form
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name, email, phone, passport_number, national_id")
+            .eq("id", user.id)
+            .maybeSingle();
 
-        setUserId(user.id);
-
-        // Fetch profile to auto-fill form
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("display_name, email, phone, passport_number, national_id")
-          .eq("id", user.id)
-          .single();
-
-        if (profile) {
-          setPassengerName(profile.display_name || "");
-          setEmail(profile.email || user.email || "");
-          setPhone(profile.phone || "");
-          setNidOrPassport(profile.passport_number || profile.national_id || "");
-        } else {
-          setEmail(user.email || "");
-          setPassengerName(user.user_metadata?.full_name || "");
+          if (profile) {
+            setPassengerName(profile.display_name || "");
+            setEmail(profile.email || user.email || "");
+            setPhone(profile.phone || "");
+            setNidOrPassport(profile.passport_number || profile.national_id || "");
+          } else {
+            setEmail(user.email || "");
+            setPassengerName(user.user_metadata?.full_name || "");
+          }
         }
       } catch (err) {
         console.warn("Profile load error:", err);
@@ -89,14 +75,56 @@ function CheckoutContent() {
 
   const finalPrice = Math.max(0, priceParam - discount);
 
-  const handleInitiateSSLCommerz = async (e: React.FormEvent) => {
+  // Primary Action: Confirm & Save Booking (Pay Later / Cash / Optional Payment)
+  const handleConfirmBookingOnly = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!passengerName || !phone || !email) {
-      setErrorMessage("Please fill in your name, email, and phone number.");
+    if (!passengerName || !email) {
+      setErrorMessage("Please fill in your name and email address.");
       return;
     }
-    if (!userId) {
-      router.push(`/signin?redirect=${encodeURIComponent(`${pathname}?${searchParams.toString()}`)}`);
+
+    setIsSubmitting(true);
+    setErrorMessage("");
+
+    try {
+      const booking = await apiService.createBooking({
+        user_id: userId || "usr-demo",
+        booking_type: bookingType,
+        reference_id: refId,
+        total_price: finalPrice,
+        currency: "BDT",
+        details: {
+          title,
+          travel_date: travelDate,
+          nid_or_passport: nidOrPassport,
+          lead_passenger: passengerName,
+          customer_name: passengerName,
+          customer_email: email,
+          customer_phone: phone,
+        },
+        payment_status: "pending",
+        booking_status: "confirmed",
+      });
+
+      // Send confirmation email (fire-and-forget)
+      fetch("/api/v1/email/welcome", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_name: passengerName, user_email: email }),
+      }).catch(() => {});
+
+      router.push(`/dashboard?status=booked&booking_id=${booking.id}`);
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to confirm booking.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Optional Action: Online Instant Payment Gateway (SSLCommerz)
+  const handleInitiateSSLCommerz = async () => {
+    if (!passengerName || !email) {
+      setErrorMessage("Please fill in your name and email address.");
       return;
     }
 
@@ -108,7 +136,7 @@ function CheckoutContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: userId,
+          user_id: userId || "usr-demo",
           booking_type: bookingType,
           reference_id: refId,
           total_price: finalPrice,
@@ -143,7 +171,7 @@ function CheckoutContent() {
       <div className="min-h-[60vh] flex items-center justify-center p-12">
         <div className="flex items-center gap-3 text-slate-500 font-bold">
           <Loader2 className="h-6 w-6 animate-spin text-emerald-700" />
-          <span>Verifying your account...</span>
+          <span>Preparing Checkout...</span>
         </div>
       </div>
     );
@@ -155,19 +183,19 @@ function CheckoutContent() {
       {/* Header Banner */}
       <div className="rounded-3xl bg-slate-50 border border-slate-200 text-slate-900 p-6 sm:p-8 flex items-center justify-between shadow-xs">
         <div>
-          <Badge variant="outline" className="font-bold text-xs">🔒 SSLCommerz Secured Checkout</Badge>
+          <Badge variant="outline" className="font-bold text-xs">Isbah Travels Official Checkout</Badge>
           <h1 className="font-outfit text-3xl font-black text-slate-900 mt-1">
-            Confirm & Pay Booking
+            Book Now & Confirm Package
           </h1>
           <p className="text-xs text-slate-500 font-semibold">
-            Account Verified • Auto-filled from your Isbah profile • 256-bit Encrypted Payment
+            Book instantly to reserve your slot • Online Payment Optional • Instant Confirmation
           </p>
         </div>
         <div className="hidden sm:flex items-center gap-2 bg-white p-3 rounded-2xl border border-slate-200 text-xs font-semibold">
           <ShieldCheck className="h-5 w-5 text-emerald-700 shrink-0" />
           <div>
             <p className="font-bold text-slate-900">Account Verified</p>
-            <p className="text-slate-500 truncate max-w-[140px]">{email}</p>
+            <p className="text-slate-500 truncate max-w-[140px]">{email || "Verified User"}</p>
           </div>
         </div>
       </div>
@@ -176,10 +204,10 @@ function CheckoutContent() {
 
         {/* Left Column: Passenger Info Form */}
         <div className="lg:col-span-2 space-y-6">
-          <form onSubmit={handleInitiateSSLCommerz} className="p-6 rounded-3xl border border-slate-200 bg-white space-y-5 shadow-xs">
+          <form onSubmit={handleConfirmBookingOnly} className="p-6 rounded-3xl border border-slate-200 bg-white space-y-5 shadow-xs">
             <h3 className="font-bold text-slate-900 text-base border-b border-slate-100 pb-3">
               Passenger & Contact Details
-              <span className="block text-[10px] text-emerald-700 font-bold mt-0.5">✓ Auto-filled from your Isbah profile</span>
+              <span className="block text-[10px] text-emerald-700 font-bold mt-0.5">✓ Auto-filled from your profile</span>
             </h3>
 
             {errorMessage && (
@@ -203,11 +231,10 @@ function CheckoutContent() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Mobile Phone Number *</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Mobile Phone Number</label>
                 <input
                   type="tel"
-                  required
-                  placeholder="e.g. +880 1700-000000"
+                  placeholder="e.g. +880 1700-000000 (Optional)"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-semibold outline-none focus:border-slate-400"
@@ -215,7 +242,7 @@ function CheckoutContent() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Email Address (for e-Ticket) *</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Email Address (for Voucher) *</label>
                 <input
                   type="email"
                   required
@@ -238,9 +265,9 @@ function CheckoutContent() {
               </div>
             </div>
 
-            {/* Payment Methods */}
+            {/* Optional Payment Methods Banner */}
             <div className="pt-3 border-t border-slate-100 space-y-2">
-              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Payment Channels (SSLCommerz)</h4>
+              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Available Payment Channels (Optional)</h4>
               <div className="flex flex-wrap gap-1.5 text-xs font-bold text-slate-700">
                 {["bKash", "Nagad", "Rocket", "VISA / Mastercard", "DBBL Nexus"].map(m => (
                   <span key={m} className="px-2.5 py-1 rounded bg-slate-100 border border-slate-200">{m}</span>
@@ -248,18 +275,33 @@ function CheckoutContent() {
               </div>
             </div>
 
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              size="lg"
-              className="w-full font-bold text-xs gap-2 rounded-2xl mt-2"
-            >
-              {isSubmitting ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /><span>Initiating SSLCommerz...</span></>
-              ) : (
-                <><CreditCard className="h-4 w-4" /><span>Pay {formatBDT(finalPrice)} via SSLCommerz</span></>
-              )}
-            </Button>
+            {/* Booking & Optional Payment Buttons */}
+            <div className="space-y-2 pt-2">
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                size="lg"
+                className="w-full font-bold text-xs gap-2 rounded-2xl bg-slate-900 text-white hover:bg-slate-800 h-12 shadow-sm"
+              >
+                {isSubmitting ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /><span>Confirming Package Booking...</span></>
+                ) : (
+                  <><CheckCircle2 className="h-4 w-4 text-emerald-400" /><span>Confirm Package Booking ({formatBDT(finalPrice)})</span></>
+                )}
+              </Button>
+
+              <Button
+                type="button"
+                onClick={handleInitiateSSLCommerz}
+                disabled={isSubmitting}
+                variant="outline"
+                size="lg"
+                className="w-full font-bold text-xs gap-2 rounded-2xl border-emerald-300 text-emerald-700 hover:bg-emerald-50 h-11"
+              >
+                <CreditCard className="h-4 w-4 text-emerald-600" />
+                <span>Pay Online Now via SSLCommerz (Optional — bKash, Nagad, Cards)</span>
+              </Button>
+            </div>
           </form>
         </div>
 

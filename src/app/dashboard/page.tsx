@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { apiService } from "@/lib/services/api";
 import { Booking, Profile } from "@/lib/types/database";
 import { formatBDT } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -49,16 +50,13 @@ function DashboardContent() {
             });
           }
 
-          // Load only THIS user's bookings
-          const { data: userBookings } = await supabase
-            .from("bookings")
-            .select("*")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false });
-
-          if (userBookings) {
-            setBookings(userBookings as Booking[]);
-          }
+          // Load user bookings via resilient API service
+          const userBookings = await apiService.getUserBookings(user.id);
+          setBookings(userBookings);
+        } else {
+          // Unauthenticated fallback
+          const userBookings = await apiService.getUserBookings("usr-demo");
+          setBookings(userBookings);
         }
       } catch (err) {
         console.warn("Dashboard load warning", err);
@@ -82,15 +80,15 @@ function DashboardContent() {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-8 bg-white text-slate-900">
       
-      {/* Payment Success Toast */}
-      {paymentStatus === "paid" && (
-        <div className="p-4 rounded-2xl bg-emerald-600 text-white shadow-md flex items-center justify-between gap-4">
+      {/* Booking Confirmed Toast */}
+      {(paymentStatus === "booked" || paymentStatus === "paid" || newBookingId) && (
+        <div className="p-4 rounded-2xl bg-emerald-600 text-white shadow-md flex items-center justify-between gap-4 animate-fade-in">
           <div className="flex items-center gap-3">
-            <CheckCircle2 className="h-6 w-6 shrink-0" />
+            <CheckCircle2 className="h-6 w-6 shrink-0 text-emerald-200" />
             <div>
-              <p className="font-extrabold text-sm">Payment Successful!</p>
+              <p className="font-extrabold text-sm">🎉 Booking Confirmed & Added to Your Account!</p>
               <p className="text-xs text-emerald-100 font-medium">
-                Booking #{newBookingId} confirmed. Txn: {tranId || "Verified"} · A confirmation email has been sent.
+                Booking #{newBookingId || "Latest"} is saved under My Bookings below. Our team will contact you shortly.
               </p>
             </div>
           </div>
@@ -100,7 +98,7 @@ function DashboardContent() {
             className="bg-white text-slate-900 hover:bg-slate-100 font-bold text-xs gap-1 rounded-xl shrink-0"
           >
             <Download className="h-4 w-4 text-emerald-700" />
-            <span>Download PDF</span>
+            <span>Download Voucher</span>
           </Button>
         </div>
       )}
