@@ -1,6 +1,6 @@
 import { MOCK_BOOKINGS, MOCK_FLIGHTS, MOCK_HOTELS, MOCK_ROOMS, MOCK_TOURS, MOCK_VISAS } from "../mock-data";
 import { createClient } from "../supabase/client";
-import { Booking, BookingStatus, Flight, Hotel, PaymentStatus, Room, Tour, TourInquiry, Visa, VisaInquiry } from "../types/database";
+import { Booking, BookingStatus, Flight, Hotel, HotelReview, PaymentStatus, Room, Tour, TourInquiry, Visa, VisaInquiry } from "../types/database";
 
 const isSupabaseConfigured = () => {
   return (
@@ -281,6 +281,129 @@ export const apiService = {
     }
     const rooms = MOCK_ROOMS.filter(r => r.hotel_id === hotelId);
     return rooms.length > 0 ? rooms : MOCK_ROOMS;
+  },
+
+  async saveRoom(room: Room): Promise<Room> {
+    if (typeof window !== "undefined") {
+      try {
+        const existing: Room[] = JSON.parse(localStorage.getItem("isbah_custom_rooms") || "[]");
+        const idx = existing.findIndex(r => r.id === room.id);
+        if (idx !== -1) existing[idx] = room;
+        else existing.unshift(room);
+        localStorage.setItem("isbah_custom_rooms", JSON.stringify(existing));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        window.dispatchEvent(new CustomEvent("isbah_hotels_updated"));
+      } catch {}
+    }
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        await supabase.from("rooms").upsert([room]);
+      } catch (err) {
+        console.warn("Supabase save room error", err);
+      }
+    }
+    const mockIdx = MOCK_ROOMS.findIndex(r => r.id === room.id);
+    if (mockIdx !== -1) MOCK_ROOMS[mockIdx] = room;
+    else MOCK_ROOMS.unshift(room);
+    return room;
+  },
+
+  async deleteRoom(roomId: string): Promise<boolean> {
+    addDeletedId(roomId);
+    if (typeof window !== "undefined") {
+      try {
+        const existing: Room[] = JSON.parse(localStorage.getItem("isbah_custom_rooms") || "[]");
+        localStorage.setItem("isbah_custom_rooms", JSON.stringify(existing.filter(r => r.id !== roomId)));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        window.dispatchEvent(new CustomEvent("isbah_hotels_updated"));
+      } catch {}
+    }
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        await supabase.from("rooms").delete().eq("id", roomId);
+      } catch (err) {
+        console.warn("Supabase delete room error", err);
+      }
+    }
+    const mockIdx = MOCK_ROOMS.findIndex(r => r.id === roomId);
+    if (mockIdx !== -1) MOCK_ROOMS.splice(mockIdx, 1);
+    return true;
+  },
+
+  async getHotelReviews(hotelId: string): Promise<HotelReview[]> {
+    let dbReviews: HotelReview[] = [];
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        const { data, error } = await supabase
+          .from("hotel_reviews")
+          .select("*, profiles(display_name, photo_url)")
+          .eq("hotel_id", hotelId)
+          .order("created_at", { ascending: false });
+        if (!error && data) {
+          dbReviews = data.map((r: any) => ({
+            id: r.id,
+            hotel_id: r.hotel_id,
+            user_id: r.user_id,
+            rating: r.rating,
+            comment: r.comment,
+            user_name: r.profiles?.display_name || "Guest",
+            user_avatar: r.profiles?.photo_url || undefined,
+            admin_response: r.admin_response || undefined,
+            created_at: r.created_at,
+          }));
+        }
+      } catch (err) {
+        console.warn("Supabase hotel reviews fetch error", err);
+      }
+    }
+    let localReviews: HotelReview[] = [];
+    if (typeof window !== "undefined") {
+      try {
+        const all: any[] = JSON.parse(localStorage.getItem("isbah_user_reviews") || "[]");
+        localReviews = all
+          .filter(r => r.target_type === "hotel" && (r.target_id === hotelId || r.hotel_id === hotelId))
+          .map(r => ({
+            id: r.id,
+            hotel_id: hotelId,
+            user_id: r.user_id || "usr-demo",
+            rating: r.rating,
+            comment: r.comment,
+            user_name: r.user_name || "Guest",
+            admin_response: r.admin_response,
+            created_at: r.created_at,
+          }));
+      } catch {}
+    }
+    const combined = [...localReviews, ...dbReviews];
+    const map = new Map<string, HotelReview>();
+    combined.forEach(r => map.set(r.id, r));
+    return Array.from(map.values()).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  },
+
+  async updateHotelReview(reviewId: string, updates: Partial<HotelReview>): Promise<boolean> {
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        await supabase.from("hotel_reviews").update(updates).eq("id", reviewId);
+      } catch (err) {
+        console.warn("Supabase update hotel review error", err);
+      }
+    }
+    if (typeof window !== "undefined") {
+      try {
+        const existing: any[] = JSON.parse(localStorage.getItem("isbah_user_reviews") || "[]");
+        const idx = existing.findIndex(r => r.id === reviewId);
+        if (idx !== -1) {
+          existing[idx] = { ...existing[idx], ...updates };
+          localStorage.setItem("isbah_user_reviews", JSON.stringify(existing));
+          window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        }
+      } catch {}
+    }
+    return true;
   },
 
   // TOURS API

@@ -75,7 +75,15 @@ export interface HotelPolicy {
   special_instructions?: string;
   child_policy?: string;
   pet_policy?: string;
+  cancellation_policy?: string;
+  refund_policy?: string;
   house_rules?: string[];
+}
+
+export interface HotelCustomSection {
+  id: string;
+  title: string;
+  content: string;
 }
 
 export interface NearbyPlace {
@@ -99,8 +107,11 @@ export interface Hotel {
   latitude: number;
   longitude: number;
   nearby: NearbyPlace[];
+  custom_sections?: HotelCustomSection[];
   rooms_count?: number;
   min_price?: number;
+  avg_rating?: number;
+  total_reviews?: number;
   show_on_homepage?: boolean;
   is_starred?: boolean;
   star_rank?: number;
@@ -133,6 +144,8 @@ export interface HotelReview {
   rating: number;
   comment: string;
   user_name?: string;
+  user_avatar?: string;
+  admin_response?: string;
   created_at: string;
 }
 
