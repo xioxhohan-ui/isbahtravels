@@ -28,6 +28,30 @@ function withTimeout<T>(promise: PromiseLike<T>, ms = 2500): Promise<T> {
   ]);
 }
 
+function getDeletedIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const list = JSON.parse(localStorage.getItem("isbah_deleted_ids") || "[]");
+    return new Set(list);
+  } catch {
+    return new Set();
+  }
+}
+
+function addDeletedId(id: string) {
+  if (typeof window === "undefined" || !id) return;
+  try {
+    const deletedSet = getDeletedIds();
+    deletedSet.add(id);
+    localStorage.setItem("isbah_deleted_ids", JSON.stringify(Array.from(deletedSet)));
+  } catch {}
+}
+
+function filterDeleted<T extends { id: string }>(items: T[]): T[] {
+  const deleted = getDeletedIds();
+  return items.filter(item => !deleted.has(item.id));
+}
+
 export const apiService = {
   // FLIGHTS API
   async getFlights(filters?: { from?: string; to?: string; trip_type?: string; class?: string }): Promise<Flight[]> {
@@ -68,7 +92,7 @@ export const apiService = {
     if (filters?.class) {
       result = result.filter(f => f.class === filters.class);
     }
-    return result;
+    return filterDeleted(result);
   },
 
   async getFlightById(id: string): Promise<Flight | null> {
@@ -108,6 +132,7 @@ export const apiService = {
   },
 
   async deleteFlight(id: string): Promise<boolean> {
+    addDeletedId(id);
     if (typeof window !== "undefined") {
       try {
         const existing: Flight[] = JSON.parse(localStorage.getItem("isbah_custom_flights") || "[]");
@@ -164,7 +189,7 @@ export const apiService = {
     if (filters?.star_rating) {
       result = result.filter(h => h.star_rating >= filters.star_rating!);
     }
-    return result;
+    return filterDeleted(result);
   },
 
   async getHotelById(id: string): Promise<Hotel | null> {
@@ -204,6 +229,7 @@ export const apiService = {
   },
 
   async deleteHotel(id: string): Promise<boolean> {
+    addDeletedId(id);
     if (typeof window !== "undefined") {
       try {
         const existing: Hotel[] = JSON.parse(localStorage.getItem("isbah_custom_hotels") || "[]");
@@ -274,7 +300,7 @@ export const apiService = {
       const q = filters.search.toLowerCase();
       result = result.filter(t => t.title.toLowerCase().includes(q) || t.location.toLowerCase().includes(q));
     }
-    return result;
+    return filterDeleted(result);
   },
 
   async getTourById(id: string): Promise<Tour | null> {
@@ -314,6 +340,7 @@ export const apiService = {
   },
 
   async deleteTour(id: string): Promise<boolean> {
+    addDeletedId(id);
     if (typeof window !== "undefined") {
       try {
         const existing: Tour[] = JSON.parse(localStorage.getItem("isbah_custom_tours") || "[]");
@@ -367,7 +394,7 @@ export const apiService = {
       const q = searchCountry.toLowerCase();
       result = result.filter(v => v.country.toLowerCase().includes(q));
     }
-    return result;
+    return filterDeleted(result);
   },
 
   async getVisaById(id: string): Promise<Visa | null> {
@@ -407,6 +434,7 @@ export const apiService = {
   },
 
   async deleteVisa(id: string): Promise<boolean> {
+    addDeletedId(id);
     if (typeof window !== "undefined") {
       try {
         const existing: Visa[] = JSON.parse(localStorage.getItem("isbah_custom_visas") || "[]");
@@ -456,7 +484,7 @@ export const apiService = {
     const combined = [...localSaved, ...dbBookings, ...MOCK_BOOKINGS];
     const uniqueMap = new Map<string, Booking>();
     combined.forEach((b) => uniqueMap.set(b.id, b));
-    return Array.from(uniqueMap.values());
+    return filterDeleted(Array.from(uniqueMap.values()));
   },
 
   async createBooking(bookingData: Partial<Booking>): Promise<Booking> {
@@ -475,12 +503,12 @@ export const apiService = {
       updated_at: new Date().toISOString(),
     };
 
-    // Always cache locally for instant client-side rendering
     if (typeof window !== "undefined") {
       try {
         const existing = JSON.parse(localStorage.getItem("isbah_local_bookings") || "[]");
         localStorage.setItem("isbah_local_bookings", JSON.stringify([newBooking, ...existing]));
         window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        window.dispatchEvent(new CustomEvent("isbah_bookings_updated"));
       } catch {}
     }
 
@@ -522,10 +550,11 @@ export const apiService = {
     const combined = [...localSaved, ...supabaseBookings, ...MOCK_BOOKINGS.filter((b) => !userId || b.user_id === userId || b.user_id === "usr-demo")];
     const uniqueMap = new Map<string, Booking>();
     combined.forEach((b) => uniqueMap.set(b.id, b));
-    return Array.from(uniqueMap.values());
+    return filterDeleted(Array.from(uniqueMap.values()));
   },
 
   async deleteBooking(id: string): Promise<boolean> {
+    addDeletedId(id);
     if (typeof window !== "undefined") {
       try {
         const existing = JSON.parse(localStorage.getItem("isbah_local_bookings") || "[]");
@@ -849,6 +878,7 @@ export const apiService = {
   },
 
   async deleteReview(id: string, targetType?: string): Promise<boolean> {
+    addDeletedId(id);
     if (typeof window !== "undefined") {
       try {
         const existing: any[] = JSON.parse(localStorage.getItem("isbah_user_reviews") || "[]");
@@ -867,6 +897,218 @@ export const apiService = {
         }
       } catch (err) {
         console.warn("Error deleting review from Supabase", err);
+      }
+    }
+    return true;
+  },
+
+  // BACKUP & RESTORE JSON API
+  async exportBackupJSON(): Promise<string> {
+    const [flights, hotels, tours, visas, bookings, visaInqs, tourInqs, reviews] = await Promise.all([
+      this.getFlights(),
+      this.getHotels(),
+      this.getTours(),
+      this.getVisas(),
+      this.getBookings(),
+      this.getVisaInquiries(),
+      this.getTourInquiries(),
+      this.getUserReviews(),
+    ]);
+
+    const backupData = {
+      app: "Isbah Travels",
+      version: "1.0",
+      exported_at: new Date().toISOString(),
+      deleted_ids: Array.from(getDeletedIds()),
+      data: {
+        flights,
+        hotels,
+        tours,
+        visas,
+        bookings,
+        visa_inquiries: visaInqs,
+        tour_inquiries: tourInqs,
+        user_reviews: reviews,
+      },
+    };
+
+    return JSON.stringify(backupData, null, 2);
+  },
+
+  async restoreBackupJSON(jsonContent: string): Promise<boolean> {
+    try {
+      const parsed = JSON.parse(jsonContent);
+      const data = parsed.data || parsed;
+
+      if (typeof window !== "undefined") {
+        if (parsed.deleted_ids && Array.isArray(parsed.deleted_ids)) {
+          localStorage.setItem("isbah_deleted_ids", JSON.stringify(parsed.deleted_ids));
+        } else {
+          localStorage.removeItem("isbah_deleted_ids");
+        }
+
+        if (data.flights) localStorage.setItem("isbah_custom_flights", JSON.stringify(data.flights));
+        if (data.hotels) localStorage.setItem("isbah_custom_hotels", JSON.stringify(data.hotels));
+        if (data.tours) localStorage.setItem("isbah_custom_tours", JSON.stringify(data.tours));
+        if (data.visas) localStorage.setItem("isbah_custom_visas", JSON.stringify(data.visas));
+        if (data.bookings) localStorage.setItem("isbah_local_bookings", JSON.stringify(data.bookings));
+        if (data.visa_inquiries) localStorage.setItem("isbah_local_visa_inquiries", JSON.stringify(data.visa_inquiries));
+        if (data.tour_inquiries) localStorage.setItem("isbah_local_tour_inquiries", JSON.stringify(data.tour_inquiries));
+        if (data.user_reviews) localStorage.setItem("isbah_user_reviews", JSON.stringify(data.user_reviews));
+
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        window.dispatchEvent(new CustomEvent("isbah_bookings_updated"));
+      }
+
+      if (isSupabaseConfigured()) {
+        try {
+          const supabase = getClient();
+          if (data.hotels?.length) await supabase.from("hotels").upsert(data.hotels);
+          if (data.tours?.length) await supabase.from("tours").upsert(data.tours);
+          if (data.flights?.length) await supabase.from("flights").upsert(data.flights);
+          if (data.visas?.length) await supabase.from("visas").upsert(data.visas);
+          if (data.bookings?.length) await supabase.from("bookings").upsert(data.bookings);
+        } catch (err) {
+          console.warn("Supabase restore error", err);
+        }
+      }
+
+      return true;
+    } catch (err) {
+      console.error("Restore error", err);
+      throw new Error("Invalid backup JSON format");
+    }
+  },
+
+  // LIVE CHAT API
+  async getChatMessages(sessionId: string): Promise<any[]> {
+    let dbMsgs: any[] = [];
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        const { data, error } = await supabase.from("chat_messages").select("*").eq("session_id", sessionId).order("created_at", { ascending: true });
+        if (!error && data) dbMsgs = data;
+      } catch (err) {
+        console.warn("Error fetching chat messages from Supabase", err);
+      }
+    }
+    let localMsgs: any[] = [];
+    if (typeof window !== "undefined") {
+      try {
+        const all: any[] = JSON.parse(localStorage.getItem("isbah_chat_messages") || "[]");
+        localMsgs = all.filter((m) => m.session_id === sessionId);
+      } catch {}
+    }
+    const combined = [...localMsgs, ...dbMsgs];
+    const map = new Map<string, any>();
+    combined.forEach((m) => map.set(m.id, m));
+    return Array.from(map.values()).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  },
+
+  async sendChatMessage(msg: { session_id: string; sender: "customer" | "admin" | "ai"; sender_name: string; message: string }): Promise<any> {
+    const newMsg = {
+      ...msg,
+      id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      created_at: new Date().toISOString(),
+    };
+
+    if (typeof window !== "undefined") {
+      try {
+        const existing: any[] = JSON.parse(localStorage.getItem("isbah_chat_messages") || "[]");
+        localStorage.setItem("isbah_chat_messages", JSON.stringify([...existing, newMsg]));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        window.dispatchEvent(new CustomEvent("isbah_chat_updated"));
+      } catch {}
+    }
+
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        await supabase.from("chat_messages").insert([newMsg]);
+      } catch (err) {
+        console.warn("Error sending chat message to Supabase", err);
+      }
+    }
+
+    return newMsg;
+  },
+
+  async getAllChatSessions(): Promise<{ session_id: string; last_message: string; last_time: string; sender_name: string; count: number }[]> {
+    let localMsgs: any[] = [];
+    if (typeof window !== "undefined") {
+      try {
+        localMsgs = JSON.parse(localStorage.getItem("isbah_chat_messages") || "[]");
+      } catch {}
+    }
+
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        const { data, error } = await supabase.from("chat_messages").select("*").order("created_at", { ascending: false });
+        if (!error && data && data.length > 0) {
+          const map = new Map<string, any>();
+          [...localMsgs, ...data].forEach((m) => {
+            if (!map.has(m.id)) map.set(m.id, m);
+          });
+          localMsgs = Array.from(map.values());
+        }
+      } catch (err) {
+        console.warn("Supabase fetch chat sessions error", err);
+      }
+    }
+
+    const sessionsMap = new Map<string, any[]>();
+    localMsgs.forEach((m) => {
+      const list = sessionsMap.get(m.session_id) || [];
+      list.push(m);
+      sessionsMap.set(m.session_id, list);
+    });
+
+    const result: any[] = [];
+    sessionsMap.forEach((msgs, sid) => {
+      msgs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      const last = msgs[0];
+      result.push({
+        session_id: sid,
+        last_message: last.message,
+        last_time: last.created_at,
+        sender_name: last.sender_name || "Customer",
+        count: msgs.length,
+      });
+    });
+
+    // Default sample session if empty
+    if (result.length === 0) {
+      result.push({
+        session_id: "demo-chat-session-1",
+        last_message: "Can you tell me about Saudi Arabia Umrah Visa packages?",
+        last_time: new Date().toISOString(),
+        sender_name: "Visitor (Dhaka)",
+        count: 2,
+      });
+    }
+
+    return result.sort((a, b) => new Date(b.last_time).getTime() - new Date(a.last_time).getTime());
+  },
+
+  async deleteChatSession(sessionId: string): Promise<boolean> {
+    addDeletedId(sessionId);
+    if (typeof window !== "undefined") {
+      try {
+        const existing: any[] = JSON.parse(localStorage.getItem("isbah_chat_messages") || "[]");
+        const filtered = existing.filter((m) => m.session_id !== sessionId);
+        localStorage.setItem("isbah_chat_messages", JSON.stringify(filtered));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        window.dispatchEvent(new CustomEvent("isbah_chat_updated"));
+      } catch {}
+    }
+
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        await supabase.from("chat_messages").delete().eq("session_id", sessionId);
+      } catch (err) {
+        console.warn("Error deleting chat session from Supabase", err);
       }
     }
     return true;

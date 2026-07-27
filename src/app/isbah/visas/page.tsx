@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import { apiService } from "@/lib/services/api";
 import { Visa } from "@/lib/types/database";
-import { formatBDT } from "@/lib/utils";
+import { formatBDT, detectCountryFlagUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileCheck, Plus, Edit3, Trash2, Clock, X } from "lucide-react";
@@ -58,6 +58,8 @@ export default function AdminVisasPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const computedFlagUrl = detectCountryFlagUrl(country);
+
     const visaObj: Visa = {
       id: editingVisa ? editingVisa.id : `vs-${Date.now()}`,
       country,
@@ -65,6 +67,7 @@ export default function AdminVisasPage() {
       processing_time: processingTime,
       fee: Number(fee),
       currency: "BDT",
+      flag_url: computedFlagUrl,
       add_on_services: editingVisa?.add_on_services || ["Express File Check"],
       important_notes: editingVisa?.important_notes || "Valid passport required.",
       documents_required: editingVisa?.documents_required || {
@@ -110,7 +113,7 @@ export default function AdminVisasPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h3 className="font-bold text-slate-900 text-base">{visa.country}</h3>
-                  {visa.flag_url && <Image src={visa.flag_url} alt={visa.country} width={24} height={16} className="h-4 w-6 object-cover rounded shadow-xs" />}
+                  <Image src={visa.flag_url || detectCountryFlagUrl(visa.country)} alt={visa.country} width={28} height={18} className="h-4 w-6 object-cover rounded shadow-xs border border-slate-200" />
                 </div>
 
                 <Badge variant="outline" className="text-[10px] font-bold">{visa.visa_type}</Badge>

@@ -6,10 +6,11 @@ import { createClient } from "@/lib/supabase/client";
 import { apiService } from "@/lib/services/api";
 import { useSupabaseRealtime } from "@/lib/hooks/use-supabase-realtime";
 import { formatBDT } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Ticket, DollarSign, Users, PhoneCall, Plane, Hotel, Compass,
-  FileCheck, ArrowRight, TrendingUp, Mail, Loader2,
+  FileCheck, ArrowRight, TrendingUp, Mail, Loader2, Download, Upload,
 } from "lucide-react";
 
 function AnimatedNumber({ value }: { value: number }) {
@@ -171,7 +172,56 @@ export default function AdminDashboardPage() {
           <p className="text-xs text-slate-500 font-semibold">Live Supabase metrics — real-time revenue, bookings and customer activities.</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="relative flex h-2.5 w-2.5">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              try {
+                const jsonStr = await apiService.exportBackupJSON();
+                const blob = new Blob([jsonStr], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `isbah-travels-backup-${new Date().toISOString().split("T")[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              } catch (err) {
+                alert("Failed to export backup JSON");
+              }
+            }}
+            className="text-xs font-bold gap-1.5 rounded-xl border-slate-300 hover:bg-slate-100"
+          >
+            <Download className="h-3.5 w-3.5 text-emerald-700" />
+            <span>Backup JSON</span>
+          </Button>
+
+          <label className="cursor-pointer">
+            <input
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                try {
+                  const text = await file.text();
+                  await apiService.restoreBackupJSON(text);
+                  alert("Successfully restored backup data from JSON!");
+                  loadLiveStats();
+                } catch (err: any) {
+                  alert(err.message || "Failed to restore backup JSON");
+                }
+              }}
+            />
+            <div className="inline-flex items-center justify-center px-3 py-1.5 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-700 hover:bg-slate-100 gap-1.5 shadow-2xs">
+              <Upload className="h-3.5 w-3.5 text-blue-600" />
+              <span>Restore JSON</span>
+            </div>
+          </label>
+
+          <span className="relative flex h-2.5 w-2.5 ml-1">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
           </span>

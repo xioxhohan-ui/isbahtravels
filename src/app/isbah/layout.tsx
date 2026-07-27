@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Compass, LayoutDashboard, Plane, Hotel, Compass as TourIcon, FileCheck, Ticket, Users, Star, PhoneCall, ShieldAlert, LogOut, ArrowLeft, Menu, X, Mail, Bell, CheckCircle2, ChevronRight } from "lucide-react";
+import { Compass, LayoutDashboard, Plane, Hotel, Compass as TourIcon, FileCheck, Ticket, Users, Star, PhoneCall, MessageSquare, ShieldAlert, LogOut, ArrowLeft, Menu, X, Mail, Bell, CheckCircle2, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiService } from "@/lib/services/api";
 import { useSupabaseRealtime } from "@/lib/hooks/use-supabase-realtime";
@@ -113,6 +113,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { label: "Manage Users", href: "/isbah/users", icon: Users },
     { label: "Manage Reviews", href: "/isbah/reviews", icon: Star },
     { label: "Inquiries & Callbacks", href: "/isbah/inquiries", icon: PhoneCall, badge: inquiriesCount > 0 ? inquiriesCount : null, badgeColor: "bg-amber-500 text-white" },
+    { label: "Live Customer Chat", href: "/isbah/chat", icon: MessageSquare },
     { label: "Security Audit Logs", href: "/isbah/audit-logs", icon: ShieldAlert },
     { label: "Email Logs", href: "/isbah/email-logs", icon: Mail },
   ];

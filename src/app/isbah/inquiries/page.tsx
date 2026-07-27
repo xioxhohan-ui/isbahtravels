@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { apiService } from "@/lib/services/api";
 import { useSupabaseRealtime } from "@/lib/hooks/use-supabase-realtime";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,77 +24,48 @@ export default function AdminInquiriesPage() {
   const [loading, setLoading] = useState(true);
 
   async function loadInquiries() {
-    let list: InquiryItem[] = [];
+    setLoading(true);
+    try {
+      const [visaInqs, tourInqs] = await Promise.all([
+        apiService.getVisaInquiries(),
+        apiService.getTourInquiries(),
+      ]);
 
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
-      try {
-        const supabase = createClient();
-        const [visaRes, tourRes] = await Promise.all([
-          supabase.from("visa_inquiries").select("*").order("created_at", { ascending: false }),
-          supabase.from("tour_inquiries").select("*").order("created_at", { ascending: false }),
-        ]);
+      const list: InquiryItem[] = [];
 
-        if (visaRes.data) {
-          visaRes.data.forEach((v: any) => {
-            list.push({
-              id: v.id,
-              type: "visa",
-              name: v.name,
-              phone: v.phone,
-              email: v.email,
-              details: v.additional_requirements || `Preferred Date: ${v.preferred_date || "Flexible"}`,
-              status: v.status || "new",
-              date: new Date(v.created_at).toLocaleString(),
-            });
-          });
-        }
-
-        if (tourRes.data) {
-          tourRes.data.forEach((t: any) => {
-            list.push({
-              id: t.id,
-              type: "tour",
-              name: t.name,
-              phone: t.phone,
-              email: t.email,
-              details: t.additional_requirements || `Journey Date: ${t.preferred_date || "Flexible"}`,
-              status: t.status || "new",
-              date: new Date(t.created_at).toLocaleString(),
-            });
-          });
-        }
-      } catch (err) {
-        console.warn("Error fetching inquiries from Supabase", err);
-      }
-    }
-
-    // Add fallback sample inquiries if DB is empty
-    if (list.length === 0) {
-      list = [
-        {
-          id: "inq-1",
+      visaInqs.forEach((v) => {
+        list.push({
+          id: v.id,
           type: "visa",
-          name: "Tariqul Islam",
-          phone: "+880 1711-998877",
-          email: "tariq@example.com",
-          details: "Saudi Arabia Umrah Visa Assistance for 4 Family Members",
-          status: "new",
-          date: new Date().toLocaleString(),
-        },
-        {
-          id: "inq-2",
-          type: "tour",
-          name: "Nusrat Jahan",
-          phone: "+880 1819-334455",
-          email: "nusrat@example.com",
-          details: "Customization inquiry for Cox's Bazar 3D2N Package",
-          status: "new",
-          date: new Date().toLocaleString(),
-        },
-      ];
-    }
+          name: v.name,
+          phone: v.phone,
+          email: v.email,
+          details: v.additional_requirements || `Preferred Date: ${v.preferred_date || "Flexible"}`,
+          status: v.status || "new",
+          date: new Date(v.created_at).toLocaleString(),
+        });
+      });
 
-    setInquiries(list);
+      tourInqs.forEach((t) => {
+        list.push({
+          id: t.id,
+          type: "tour",
+          name: t.name,
+          phone: t.phone,
+          email: t.email,
+          details: t.additional_requirements || `Journey Date: ${t.journey_date || "Flexible"}`,
+          status: t.status || "new",
+          date: new Date(t.created_at).toLocaleString(),
+        });
+      });
+
+      // Sort newest first
+      list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      setInquiries(list);
+    } catch (err) {
+      console.warn("Error loading inquiries", err);
+    }
     setLoading(false);
   }
 

@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { apiService } from "@/lib/services/api";
 import { Visa } from "@/lib/types/database";
-import { formatBDT } from "@/lib/utils";
+import { formatBDT, detectCountryFlagUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileCheck, Clock, CheckCircle2, Briefcase, Building, GraduationCap, User, PhoneCall, Sparkles, Send } from "lucide-react";
@@ -86,7 +86,7 @@ function VisaContent() {
                 : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
             }`}
           >
-            {visa.flag_url && <Image src={visa.flag_url} alt={visa.country} width={20} height={14} className="h-3.5 w-5 object-cover rounded shadow-xs" />}
+            <Image src={visa.flag_url || detectCountryFlagUrl(visa.country)} alt={visa.country} width={20} height={14} className="h-3.5 w-5 object-cover rounded shadow-xs border border-slate-200" />
             <span>{visa.country}</span>
           </button>
         ))}
