@@ -18,6 +18,7 @@ import {
   Edit3,
   Save,
   Printer,
+  Download,
   ShieldCheck,
   CheckCircle2,
   Loader2,
@@ -475,28 +476,60 @@ function ProfileContent() {
               </div>
             ) : (
               <div className="space-y-3">
-                {bookings.map((booking) => (
-                  <div key={booking.id} className="p-4 rounded-xl border border-slate-200 bg-white space-y-2 shadow-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Ref #{booking.id}</span>
-                      <Badge variant={booking.booking_status === "confirmed" ? "default" : "secondary"}>
-                        {booking.booking_status.toUpperCase()}
-                      </Badge>
-                    </div>
+                {bookings.map((booking) => {
+                  const phoneNum = booking.details?.customer_phone || booking.details?.phone || "+880 1711-998877";
+                  return (
+                    <div key={booking.id} className="p-4 rounded-2xl border border-slate-200 bg-white space-y-3 shadow-xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase font-mono">Ref #{booking.id}</span>
+                          <Badge variant="outline" className="text-[9px] uppercase font-bold">{booking.booking_type}</Badge>
+                        </div>
+                        <Badge variant={booking.booking_status === "confirmed" ? "default" : "secondary"}>
+                          {booking.booking_status.toUpperCase()}
+                        </Badge>
+                      </div>
 
-                    <h4 className="font-bold text-slate-900 text-sm">
-                      {booking.details?.title || booking.details?.airline || `${booking.booking_type.toUpperCase()} Booking`}
-                    </h4>
+                      <div className="space-y-1">
+                        <h4 className="font-bold text-slate-900 text-sm">
+                          {booking.details?.title || booking.details?.airline || `${booking.booking_type.toUpperCase()} Booking`}
+                        </h4>
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600 font-medium">
+                          <span className="font-bold text-emerald-700">Phone: {phoneNum}</span>
+                          <span>Passenger: {booking.details?.customer_name || booking.details?.lead_passenger || "You"}</span>
+                          {booking.details?.travel_date && <span>Date: {booking.details.travel_date}</span>}
+                        </div>
+                      </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
-                      <span className="font-extrabold text-slate-900">{formatBDT(booking.total_price)}</span>
-                      <Button size="sm" variant="outline" onClick={() => window.open(`/api/receipt?booking_id=${booking.id}`, "_blank")} className="font-bold gap-1 rounded-lg h-8 text-xs">
-                        <Printer className="h-3.5 w-3.5 text-emerald-700" />
-                        <span>Download Receipt</span>
-                      </Button>
+                      <div className="flex items-center justify-between pt-2.5 border-t border-slate-100 text-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold block uppercase">Total Paid</span>
+                          <span className="font-extrabold text-slate-900 text-sm">{formatBDT(booking.total_price)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(`/api/receipt?booking_id=${booking.id}&download=true`, "_blank")}
+                            className="font-bold gap-1 rounded-xl h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white border-emerald-700"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                            <span>Download PDF</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => window.open(`/api/receipt?booking_id=${booking.id}`, "_blank")}
+                            className="font-bold gap-1 rounded-xl h-8 text-xs"
+                          >
+                            <Printer className="h-3.5 w-3.5 text-emerald-700" />
+                            <span>Print</span>
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

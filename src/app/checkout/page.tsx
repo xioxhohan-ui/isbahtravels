@@ -82,8 +82,8 @@ function CheckoutContent() {
   // Primary Action: Confirm & Save Booking (Pay Later / Cash / Optional Payment)
   const handleConfirmBookingOnly = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!passengerName || !email) {
-      setErrorMessage("Please fill in your name and email address.");
+    if (!passengerName || !email || !phone) {
+      setErrorMessage("Please fill in your name, email address, and mobile phone number.");
       return;
     }
 
@@ -127,8 +127,8 @@ function CheckoutContent() {
 
   // Optional Action: Online Instant Payment Gateway (SSLCommerz)
   const handleInitiateSSLCommerz = async () => {
-    if (!passengerName || !email) {
-      setErrorMessage("Please fill in your name and email address.");
+    if (!passengerName || !email || !phone) {
+      setErrorMessage("Please fill in your name, email address, and mobile phone number.");
       return;
     }
 
@@ -235,10 +235,11 @@ function CheckoutContent() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Mobile Phone Number</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Mobile Phone Number *</label>
                 <input
                   type="tel"
-                  placeholder="e.g. +880 1700-000000 (Optional)"
+                  required
+                  placeholder="e.g. +880 1711-998877"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-semibold outline-none focus:border-slate-400"
