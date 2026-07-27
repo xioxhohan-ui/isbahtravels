@@ -17,34 +17,41 @@ export async function proxy(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) => {
-          request.cookies.set(name, value);
-        });
-        response = NextResponse.next({
-          request,
-        });
-        // Re-attach security headers on updated response
-        response.headers.set("X-Frame-Options", "DENY");
-        response.headers.set("X-Content-Type-Options", "nosniff");
-        response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-        response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  let user = null;
 
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
-        });
-      },
-    },
-  });
+  if (supabaseUrl && supabaseAnonKey) {
+    try {
+      const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) => {
+              request.cookies.set(name, value);
+            });
+            response = NextResponse.next({
+              request,
+            });
+            // Re-attach security headers on updated response
+            response.headers.set("X-Frame-Options", "DENY");
+            response.headers.set("X-Content-Type-Options", "nosniff");
+            response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+            response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+            cookiesToSet.forEach(({ name, value, options }) => {
+              response.cookies.set(name, value, options);
+            });
+          },
+        },
+      });
+
+      const { data } = await supabase.auth.getUser();
+      user = data?.user ?? null;
+    } catch (error) {
+      console.error("Proxy Supabase client error:", error);
+    }
+  }
 
   const pathname = request.nextUrl.pathname;
 
