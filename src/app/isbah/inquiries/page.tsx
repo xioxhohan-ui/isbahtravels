@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useSupabaseRealtime } from "@/lib/hooks/use-supabase-realtime";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PhoneCall, CheckCircle2, FileCheck, Compass, Loader2 } from "lucide-react";
+import { PhoneCall, CheckCircle2, FileCheck, Compass, Loader2, Trash2 } from "lucide-react";
 
 interface InquiryItem {
   id: string;
@@ -113,18 +113,33 @@ export default function AdminInquiriesPage() {
     };
   }, []);
 
+  const handleDeleteInquiry = async (inq: InquiryItem) => {
+    if (confirm(`Delete inquiry from ${inq.name}?`)) {
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL && !inq.id.startsWith("sample-")) {
+        try {
+          const supabase = createClient();
+          const table = inq.type === "visa" ? "visa_inquiries" : "tour_inquiries";
+          await supabase.from(table).delete().eq("id", inq.id);
+        } catch (err) {
+          console.warn("Delete inquiry error", err);
+        }
+      }
+      setInquiries((prev) => prev.filter((i) => i.id !== inq.id));
+    }
+  };
+
   const updateStatus = async (inq: InquiryItem, newStatus: "contacted" | "closed") => {
-    setInquiries(prev =>
-      prev.map(item => (item.id === inq.id ? { ...item, status: newStatus } : item))
+    setInquiries((prev) =>
+      prev.map((item) => (item.id === inq.id ? { ...item, status: newStatus } : item))
     );
 
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && !inq.id.startsWith("inq-")) {
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && !inq.id.startsWith("sample-")) {
       try {
         const supabase = createClient();
         const table = inq.type === "visa" ? "visa_inquiries" : "tour_inquiries";
         await supabase.from(table).update({ status: newStatus }).eq("id", inq.id);
       } catch (err) {
-        console.warn("Status update error", err);
+        console.warn("Error updating inquiry status in Supabase", err);
       }
     }
   };
@@ -209,6 +224,15 @@ export default function AdminInquiriesPage() {
                           <span>Close</span>
                         </Button>
                       )}
+
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDeleteInquiry(inq)}
+                        className="text-xs font-bold rounded-xl text-rose-600 hover:bg-rose-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </td>
                 </tr>

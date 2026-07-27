@@ -23,7 +23,8 @@ import {
   Download,
   X,
   CreditCard,
-  User
+  User,
+  Trash2
 } from "lucide-react";
 
 export default function AdminBookingsPage() {
@@ -121,6 +122,18 @@ export default function AdminBookingsPage() {
   const handleOpenReceipt = (bookingId: string, download = false) => {
     const url = `/api/receipt?booking_id=${bookingId}${download ? "&download=true" : ""}`;
     window.open(url, "_blank");
+  };
+
+  const handleDeleteBooking = async (id: string) => {
+    if (confirm(`Are you sure you want to delete booking #${id}? This action cannot be undone.`)) {
+      await apiService.deleteBooking(id);
+      setBookings(prev => prev.filter(b => b.id !== id));
+      if (selectedBookingModal?.id === id) {
+        setSelectedBookingModal(null);
+      }
+      setToast({ msg: `Booking #${id} deleted successfully.`, ok: true });
+      setTimeout(() => setToast(null), 4000);
+    }
   };
 
   return (
@@ -266,7 +279,7 @@ export default function AdminBookingsPage() {
                           onClick={() => handleToggleStatus(b)}
                           className={`text-xs font-bold rounded-xl gap-1 ${
                             b.booking_status === "confirmed"
-                              ? "text-red-700 border-red-200 hover:bg-red-50"
+                              ? "text-amber-700 border-amber-200 hover:bg-amber-50"
                               : "text-emerald-700 border-emerald-200 hover:bg-emerald-50"
                           }`}
                         >
@@ -277,6 +290,15 @@ export default function AdminBookingsPage() {
                           ) : (
                             <><CheckCircle2 className="h-3.5 w-3.5" /><span>Confirm</span></>
                           )}
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteBooking(b.id)}
+                          className="text-xs font-bold rounded-xl text-rose-600 hover:bg-rose-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </td>
@@ -471,6 +493,16 @@ export default function AdminBookingsPage() {
                   ) : (
                     <><CheckCircle2 className="h-3.5 w-3.5" /><span>Confirm Booking</span></>
                   )}
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleDeleteBooking(selectedBookingModal.id)}
+                  className="font-bold text-xs rounded-xl gap-1 text-rose-700 border-rose-200 hover:bg-rose-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Delete Booking</span>
                 </Button>
 
                 <Button

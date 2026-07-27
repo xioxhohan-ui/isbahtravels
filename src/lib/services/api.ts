@@ -263,6 +263,31 @@ export const apiService = {
     return Array.from(uniqueMap.values());
   },
 
+  async deleteBooking(id: string): Promise<boolean> {
+    if (typeof window !== "undefined") {
+      try {
+        const existing = JSON.parse(localStorage.getItem("isbah_local_bookings") || "[]");
+        const updated = existing.filter((b: any) => b.id !== id);
+        localStorage.setItem("isbah_local_bookings", JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        window.dispatchEvent(new CustomEvent("isbah_bookings_updated"));
+      } catch {}
+    }
+
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        await supabase.from("bookings").delete().eq("id", id);
+      } catch (err) {
+        console.warn("Supabase booking delete error", err);
+      }
+    }
+
+    const idx = MOCK_BOOKINGS.findIndex((b) => b.id === id);
+    if (idx !== -1) MOCK_BOOKINGS.splice(idx, 1);
+    return true;
+  },
+
   // INQUIRIES API
   async submitVisaInquiry(inquiry: Omit<VisaInquiry, "id" | "status" | "created_at">): Promise<boolean> {
     if (isSupabaseConfigured()) {

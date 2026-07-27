@@ -257,13 +257,31 @@ export default function AdminFlightsPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-                <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} size="sm">
-                  Cancel
-                </Button>
-                <Button type="submit" size="sm" className="font-bold px-6">
-                  Save & Push Real-time
-                </Button>
+              <div className="flex justify-between items-center gap-2 pt-3 border-t border-slate-100">
+                {editingFlight ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      handleDelete(editingFlight.id);
+                      setIsModalOpen(false);
+                    }}
+                    size="sm"
+                    className="font-bold text-xs text-rose-700 border-rose-200 hover:bg-rose-50 gap-1 rounded-xl"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Delete Flight</span>
+                  </Button>
+                ) : <div />}
+
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} size="sm">
+                    Cancel
+                  </Button>
+                  <Button type="submit" size="sm" className="font-bold px-6">
+                    Save & Push Real-time
+                  </Button>
+                </div>
               </div>
             </form>
           </div>

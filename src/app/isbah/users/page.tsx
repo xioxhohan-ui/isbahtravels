@@ -6,31 +6,35 @@ import { createClient } from "@/lib/supabase/client";
 import { Profile } from "@/lib/types/database";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useSupabaseRealtime } from "@/lib/hooks/use-supabase-realtime";
 import { Users, UserX, ShieldCheck, RefreshCw } from "lucide-react";
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadUsers() {
-      setLoading(true);
-      if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
-        try {
-          const supabase = createClient();
-          const { data, error } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
-          if (!error && data) {
-            setUsers(data as Profile[]);
-            setLoading(false);
-            return;
-          }
-        } catch (err) {
-          console.warn("Supabase fetch users warning", err);
+  async function loadUsers() {
+    setLoading(true);
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
+        if (!error && data) {
+          setUsers(data as Profile[]);
+          setLoading(false);
+          return;
         }
+      } catch (err) {
+        console.warn("Supabase fetch users warning", err);
       }
-      setUsers([]);
-      setLoading(false);
     }
+    setUsers([]);
+    setLoading(false);
+  }
+
+  useSupabaseRealtime("profiles", loadUsers);
+
+  useEffect(() => {
     loadUsers();
   }, []);
 
