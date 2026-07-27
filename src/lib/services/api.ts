@@ -31,27 +31,36 @@ function withTimeout<T>(promise: PromiseLike<T>, ms = 2500): Promise<T> {
 export const apiService = {
   // FLIGHTS API
   async getFlights(filters?: { from?: string; to?: string; trip_type?: string; class?: string }): Promise<Flight[]> {
+    let dbFlights: Flight[] = [];
     if (isSupabaseConfigured()) {
       try {
         const supabase = getClient();
-        let query = supabase.from("flights").select("*");
-        if (filters?.trip_type) query = query.eq("trip_type", filters.trip_type);
-        if (filters?.class) query = query.eq("class", filters.class);
-        const { data, error } = await withTimeout(query);
-        if (!error && data && data.length > 0) return data as Flight[];
+        const { data, error } = await withTimeout(supabase.from("flights").select("*"));
+        if (!error && data && data.length > 0) dbFlights = data as Flight[];
       } catch (err) {
-        console.warn("Supabase fetch failed, fallback to mock flights", err);
+        console.warn("Supabase flights fetch failed", err);
       }
     }
-    
-    let result = [...MOCK_FLIGHTS];
+
+    let localFlights: Flight[] = [];
+    if (typeof window !== "undefined") {
+      try {
+        localFlights = JSON.parse(localStorage.getItem("isbah_custom_flights") || "[]");
+      } catch {}
+    }
+
+    const combined = [...localFlights, ...dbFlights, ...MOCK_FLIGHTS];
+    const uniqueMap = new Map<string, Flight>();
+    combined.forEach((f) => uniqueMap.set(f.id, f));
+    let result = Array.from(uniqueMap.values());
+
     if (filters?.from) {
       const fromLower = filters.from.toLowerCase();
-      result = result.filter(f => f.segments.some(s => s.from.toLowerCase().includes(fromLower)));
+      result = result.filter(f => f.segments?.some(s => s.from.toLowerCase().includes(fromLower)));
     }
     if (filters?.to) {
       const toLower = filters.to.toLowerCase();
-      result = result.filter(f => f.segments.some(s => s.to.toLowerCase().includes(toLower)));
+      result = result.filter(f => f.segments?.some(s => s.to.toLowerCase().includes(toLower)));
     }
     if (filters?.trip_type) {
       result = result.filter(f => f.trip_type === filters.trip_type);
@@ -67,22 +76,87 @@ export const apiService = {
     return flights.find(f => f.id === id) || null;
   },
 
-  // HOTELS API
-  async getHotels(filters?: { city?: string; star_rating?: number }): Promise<Hotel[]> {
+  async saveFlight(flight: Flight): Promise<Flight> {
+    if (typeof window !== "undefined") {
+      try {
+        const existing: Flight[] = JSON.parse(localStorage.getItem("isbah_custom_flights") || "[]");
+        const idx = existing.findIndex(f => f.id === flight.id);
+        if (idx !== -1) {
+          existing[idx] = flight;
+        } else {
+          existing.unshift(flight);
+        }
+        localStorage.setItem("isbah_custom_flights", JSON.stringify(existing));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        window.dispatchEvent(new CustomEvent("isbah_flights_updated"));
+      } catch {}
+    }
+
     if (isSupabaseConfigured()) {
       try {
         const supabase = getClient();
-        let query = supabase.from("hotels").select("*");
-        if (filters?.city) query = query.ilike("city", `%${filters.city}%`);
-        if (filters?.star_rating) query = query.gte("star_rating", filters.star_rating);
-        const { data, error } = await query;
-        if (!error && data && data.length > 0) return data as Hotel[];
+        await supabase.from("flights").upsert([flight]);
       } catch (err) {
-        console.warn("Supabase fetch failed, fallback to mock hotels", err);
+        console.warn("Supabase save flight error", err);
       }
     }
 
-    let result = [...MOCK_HOTELS];
+    const mockIdx = MOCK_FLIGHTS.findIndex(f => f.id === flight.id);
+    if (mockIdx !== -1) MOCK_FLIGHTS[mockIdx] = flight;
+    else MOCK_FLIGHTS.unshift(flight);
+    return flight;
+  },
+
+  async deleteFlight(id: string): Promise<boolean> {
+    if (typeof window !== "undefined") {
+      try {
+        const existing: Flight[] = JSON.parse(localStorage.getItem("isbah_custom_flights") || "[]");
+        const filtered = existing.filter(f => f.id !== id);
+        localStorage.setItem("isbah_custom_flights", JSON.stringify(filtered));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        window.dispatchEvent(new CustomEvent("isbah_flights_updated"));
+      } catch {}
+    }
+
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        await supabase.from("flights").delete().eq("id", id);
+      } catch (err) {
+        console.warn("Supabase delete flight error", err);
+      }
+    }
+
+    const mockIdx = MOCK_FLIGHTS.findIndex(f => f.id === id);
+    if (mockIdx !== -1) MOCK_FLIGHTS.splice(mockIdx, 1);
+    return true;
+  },
+
+  // HOTELS API
+  async getHotels(filters?: { city?: string; star_rating?: number }): Promise<Hotel[]> {
+    let dbHotels: Hotel[] = [];
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        const { data, error } = await withTimeout(supabase.from("hotels").select("*"));
+        if (!error && data && data.length > 0) dbHotels = data as Hotel[];
+      } catch (err) {
+        console.warn("Supabase fetch hotels failed", err);
+      }
+    }
+
+    let localHotels: Hotel[] = [];
+    if (typeof window !== "undefined") {
+      try {
+        localHotels = JSON.parse(localStorage.getItem("isbah_custom_hotels") || "[]");
+      } catch {}
+    }
+
+    const combined = [...localHotels, ...dbHotels, ...MOCK_HOTELS];
+    const uniqueMap = new Map<string, Hotel>();
+    combined.forEach((h) => uniqueMap.set(h.id, h));
+    let result = Array.from(uniqueMap.values());
+
     if (filters?.city) {
       const cityLower = filters.city.toLowerCase();
       result = result.filter(h => h.city.toLowerCase().includes(cityLower) || h.name.toLowerCase().includes(cityLower));
@@ -96,6 +170,62 @@ export const apiService = {
   async getHotelById(id: string): Promise<Hotel | null> {
     const hotels = await this.getHotels();
     return hotels.find(h => h.id === id) || MOCK_HOTELS[0];
+  },
+
+  async saveHotel(hotel: Hotel): Promise<Hotel> {
+    if (typeof window !== "undefined") {
+      try {
+        const existing: Hotel[] = JSON.parse(localStorage.getItem("isbah_custom_hotels") || "[]");
+        const idx = existing.findIndex(h => h.id === hotel.id);
+        if (idx !== -1) {
+          existing[idx] = hotel;
+        } else {
+          existing.unshift(hotel);
+        }
+        localStorage.setItem("isbah_custom_hotels", JSON.stringify(existing));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        window.dispatchEvent(new CustomEvent("isbah_hotels_updated"));
+      } catch {}
+    }
+
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        await supabase.from("hotels").upsert([hotel]);
+      } catch (err) {
+        console.warn("Supabase save hotel error", err);
+      }
+    }
+
+    const mockIdx = MOCK_HOTELS.findIndex(h => h.id === hotel.id);
+    if (mockIdx !== -1) MOCK_HOTELS[mockIdx] = hotel;
+    else MOCK_HOTELS.unshift(hotel);
+    return hotel;
+  },
+
+  async deleteHotel(id: string): Promise<boolean> {
+    if (typeof window !== "undefined") {
+      try {
+        const existing: Hotel[] = JSON.parse(localStorage.getItem("isbah_custom_hotels") || "[]");
+        const filtered = existing.filter(h => h.id !== id);
+        localStorage.setItem("isbah_custom_hotels", JSON.stringify(filtered));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        window.dispatchEvent(new CustomEvent("isbah_hotels_updated"));
+      } catch {}
+    }
+
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        await supabase.from("hotels").delete().eq("id", id);
+      } catch (err) {
+        console.warn("Supabase delete hotel error", err);
+      }
+    }
+
+    const mockIdx = MOCK_HOTELS.findIndex(h => h.id === id);
+    if (mockIdx !== -1) MOCK_HOTELS.splice(mockIdx, 1);
+    return true;
   },
 
   async getHotelRooms(hotelId: string): Promise<Room[]> {
@@ -114,19 +244,29 @@ export const apiService = {
 
   // TOURS API
   async getTours(filters?: { category?: string; search?: string }): Promise<Tour[]> {
+    let dbTours: Tour[] = [];
     if (isSupabaseConfigured()) {
       try {
         const supabase = getClient();
-        let query = supabase.from("tours").select("*");
-        if (filters?.category) query = query.eq("category", filters.category);
-        const { data, error } = await query;
-        if (!error && data && data.length > 0) return data as Tour[];
+        const { data, error } = await withTimeout(supabase.from("tours").select("*"));
+        if (!error && data && data.length > 0) dbTours = data as Tour[];
       } catch (err) {
         console.warn("Supabase tours fetch error", err);
       }
     }
 
-    let result = [...MOCK_TOURS];
+    let localTours: Tour[] = [];
+    if (typeof window !== "undefined") {
+      try {
+        localTours = JSON.parse(localStorage.getItem("isbah_custom_tours") || "[]");
+      } catch {}
+    }
+
+    const combined = [...localTours, ...dbTours, ...MOCK_TOURS];
+    const uniqueMap = new Map<string, Tour>();
+    combined.forEach((t) => uniqueMap.set(t.id, t));
+    let result = Array.from(uniqueMap.values());
+
     if (filters?.category && filters.category !== "All") {
       result = result.filter(t => t.category === filters.category);
     }
@@ -142,21 +282,87 @@ export const apiService = {
     return tours.find(t => t.id === id) || MOCK_TOURS[0];
   },
 
-  // VISAS API
-  async getVisas(searchCountry?: string): Promise<Visa[]> {
+  async saveTour(tour: Tour): Promise<Tour> {
+    if (typeof window !== "undefined") {
+      try {
+        const existing: Tour[] = JSON.parse(localStorage.getItem("isbah_custom_tours") || "[]");
+        const idx = existing.findIndex(t => t.id === tour.id);
+        if (idx !== -1) {
+          existing[idx] = tour;
+        } else {
+          existing.unshift(tour);
+        }
+        localStorage.setItem("isbah_custom_tours", JSON.stringify(existing));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        window.dispatchEvent(new CustomEvent("isbah_tours_updated"));
+      } catch {}
+    }
+
     if (isSupabaseConfigured()) {
       try {
         const supabase = getClient();
-        let query = supabase.from("visas").select("*");
-        if (searchCountry) query = query.ilike("country", `%${searchCountry}%`);
-        const { data, error } = await query;
-        if (!error && data && data.length > 0) return data as Visa[];
+        await supabase.from("tours").upsert([tour]);
+      } catch (err) {
+        console.warn("Supabase save tour error", err);
+      }
+    }
+
+    const mockIdx = MOCK_TOURS.findIndex(t => t.id === tour.id);
+    if (mockIdx !== -1) MOCK_TOURS[mockIdx] = tour;
+    else MOCK_TOURS.unshift(tour);
+    return tour;
+  },
+
+  async deleteTour(id: string): Promise<boolean> {
+    if (typeof window !== "undefined") {
+      try {
+        const existing: Tour[] = JSON.parse(localStorage.getItem("isbah_custom_tours") || "[]");
+        const filtered = existing.filter(t => t.id !== id);
+        localStorage.setItem("isbah_custom_tours", JSON.stringify(filtered));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        window.dispatchEvent(new CustomEvent("isbah_tours_updated"));
+      } catch {}
+    }
+
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        await supabase.from("tours").delete().eq("id", id);
+      } catch (err) {
+        console.warn("Supabase delete tour error", err);
+      }
+    }
+
+    const mockIdx = MOCK_TOURS.findIndex(t => t.id === id);
+    if (mockIdx !== -1) MOCK_TOURS.splice(mockIdx, 1);
+    return true;
+  },
+
+  // VISAS API
+  async getVisas(searchCountry?: string): Promise<Visa[]> {
+    let dbVisas: Visa[] = [];
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        const { data, error } = await withTimeout(supabase.from("visas").select("*"));
+        if (!error && data && data.length > 0) dbVisas = data as Visa[];
       } catch (err) {
         console.warn("Supabase visa fetch error", err);
       }
     }
 
-    let result = [...MOCK_VISAS];
+    let localVisas: Visa[] = [];
+    if (typeof window !== "undefined") {
+      try {
+        localVisas = JSON.parse(localStorage.getItem("isbah_custom_visas") || "[]");
+      } catch {}
+    }
+
+    const combined = [...localVisas, ...dbVisas, ...MOCK_VISAS];
+    const uniqueMap = new Map<string, Visa>();
+    combined.forEach((v) => uniqueMap.set(v.id, v));
+    let result = Array.from(uniqueMap.values());
+
     if (searchCountry) {
       const q = searchCountry.toLowerCase();
       result = result.filter(v => v.country.toLowerCase().includes(q));
@@ -167,6 +373,62 @@ export const apiService = {
   async getVisaById(id: string): Promise<Visa | null> {
     const visas = await this.getVisas();
     return visas.find(v => v.id === id) || MOCK_VISAS[0];
+  },
+
+  async saveVisa(visa: Visa): Promise<Visa> {
+    if (typeof window !== "undefined") {
+      try {
+        const existing: Visa[] = JSON.parse(localStorage.getItem("isbah_custom_visas") || "[]");
+        const idx = existing.findIndex(v => v.id === visa.id);
+        if (idx !== -1) {
+          existing[idx] = visa;
+        } else {
+          existing.unshift(visa);
+        }
+        localStorage.setItem("isbah_custom_visas", JSON.stringify(existing));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        window.dispatchEvent(new CustomEvent("isbah_visas_updated"));
+      } catch {}
+    }
+
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        await supabase.from("visas").upsert([visa]);
+      } catch (err) {
+        console.warn("Supabase save visa error", err);
+      }
+    }
+
+    const mockIdx = MOCK_VISAS.findIndex(v => v.id === visa.id);
+    if (mockIdx !== -1) MOCK_VISAS[mockIdx] = visa;
+    else MOCK_VISAS.unshift(visa);
+    return visa;
+  },
+
+  async deleteVisa(id: string): Promise<boolean> {
+    if (typeof window !== "undefined") {
+      try {
+        const existing: Visa[] = JSON.parse(localStorage.getItem("isbah_custom_visas") || "[]");
+        const filtered = existing.filter(v => v.id !== id);
+        localStorage.setItem("isbah_custom_visas", JSON.stringify(filtered));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+        window.dispatchEvent(new CustomEvent("isbah_visas_updated"));
+      } catch {}
+    }
+
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        await supabase.from("visas").delete().eq("id", id);
+      } catch (err) {
+        console.warn("Supabase delete visa error", err);
+      }
+    }
+
+    const mockIdx = MOCK_VISAS.findIndex(v => v.id === id);
+    if (mockIdx !== -1) MOCK_VISAS.splice(mockIdx, 1);
+    return true;
   },
 
   // BOOKINGS API

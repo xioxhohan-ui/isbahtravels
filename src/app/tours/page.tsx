@@ -35,6 +35,13 @@ function ToursContent() {
       setLoading(false);
     }
     loadTours();
+
+    window.addEventListener("isbah_data_updated", loadTours);
+    window.addEventListener("storage", loadTours);
+    return () => {
+      window.removeEventListener("isbah_data_updated", loadTours);
+      window.removeEventListener("storage", loadTours);
+    };
   }, [category, searchQuery]);
 
   const toggleDuration = (dur: string) => {

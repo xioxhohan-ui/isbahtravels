@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { apiService } from "@/lib/services/api";
@@ -22,7 +22,7 @@ function FlightsContent() {
   const [selectedAirline, setSelectedAirline] = useState("All");
 
   // User-facing pages rely on React Query (stale-while-revalidate + window focus refetch) without Realtime
-  const { data: flights = [], isLoading } = useQuery({
+  const { data: flights = [], isLoading, refetch } = useQuery({
     queryKey: ["flights", initialFrom, initialTo, initialType, initialClass],
     queryFn: () =>
       apiService.getFlights({
@@ -32,6 +32,16 @@ function FlightsContent() {
         class: initialClass,
       }),
   });
+
+  useEffect(() => {
+    const handleUpdate = () => refetch();
+    window.addEventListener("isbah_data_updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("isbah_data_updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, [refetch]);
 
   const filteredFlights = selectedAirline === "All"
     ? flights

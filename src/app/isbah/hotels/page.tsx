@@ -69,8 +69,9 @@ export default function AdminHotelsPage() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this hotel property?")) {
+      await apiService.deleteHotel(id);
       setHotels(prev => prev.filter(h => h.id !== id));
     }
   };
@@ -84,7 +85,6 @@ export default function AdminHotelsPage() {
       { name: "Sugandha Market", type: "Shopping", distance: "0.6 km" },
     ];
 
-    // Trigger Google Places 1km Nearby Auto-Collection API Route
     try {
       const res = await fetch("/api/hotels/nearby", {
         method: "POST",
@@ -104,46 +104,32 @@ export default function AdminHotelsPage() {
       console.warn("Auto-collection fetch warning", err);
     }
 
+    const hotelObj: Hotel = {
+      id: editingHotel ? editingHotel.id : `ht-${Date.now()}`,
+      name,
+      city,
+      area,
+      address,
+      star_rating: Number(starRating),
+      description,
+      min_price: Number(minPrice),
+      latitude: Number(latitude),
+      longitude: Number(longitude),
+      images: editingHotel?.images || ["https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80"],
+      facilities: editingHotel?.facilities || { General: ["Free Wi-Fi", "Swimming Pool"] },
+      policies: editingHotel?.policies || { check_in_time: "02:00 PM", check_out_time: "12:00 PM" },
+      discount: editingHotel?.discount || 10,
+      nearby: fetchedNearby,
+    };
+
+    await apiService.saveHotel(hotelObj);
+
     if (editingHotel) {
-      setHotels(prev =>
-        prev.map(h =>
-          h.id === editingHotel.id
-            ? {
-                ...h,
-                name,
-                city,
-                area,
-                address,
-                star_rating: Number(starRating),
-                description,
-                min_price: Number(minPrice),
-                latitude: Number(latitude),
-                longitude: Number(longitude),
-                nearby: fetchedNearby,
-              }
-            : h
-        )
-      );
+      setHotels(prev => prev.map(h => h.id === hotelObj.id ? hotelObj : h));
     } else {
-      const newHotel: Hotel = {
-        id: `ht-${Date.now()}`,
-        name,
-        city,
-        area,
-        address,
-        star_rating: Number(starRating),
-        description,
-        min_price: Number(minPrice),
-        latitude: Number(latitude),
-        longitude: Number(longitude),
-        images: ["https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80"],
-        facilities: { General: ["Free Wi-Fi", "Swimming Pool"] },
-        policies: { check_in_time: "02:00 PM", check_out_time: "12:00 PM" },
-        discount: 10,
-        nearby: fetchedNearby,
-      };
-      setHotels(prev => [newHotel, ...prev]);
+      setHotels(prev => [hotelObj, ...prev]);
     }
+
     setAutoCollecting(false);
     setIsModalOpen(false);
   };

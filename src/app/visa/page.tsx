@@ -37,6 +37,13 @@ function VisaContent() {
       setLoading(false);
     }
     loadVisas();
+
+    window.addEventListener("isbah_data_updated", loadVisas);
+    window.addEventListener("storage", loadVisas);
+    return () => {
+      window.removeEventListener("isbah_data_updated", loadVisas);
+      window.removeEventListener("storage", loadVisas);
+    };
   }, [initialCountry]);
 
   const handleInquirySubmit = async (e: React.FormEvent) => {

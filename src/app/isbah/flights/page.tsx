@@ -62,46 +62,35 @@ export default function AdminFlightsPage() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this flight offer?")) {
+      await apiService.deleteFlight(id);
       setFlights(prev => prev.filter(f => f.id !== id));
       queryClient.invalidateQueries({ queryKey: ["flights"] });
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const flightObj: Flight = {
+      id: editingFlight ? editingFlight.id : `fl-${Date.now()}`,
+      airline,
+      flight_number: flightNumber,
+      trip_type: tripType,
+      class: flightClass,
+      price: Number(price),
+      currency: "BDT",
+      available_seats: Number(seats),
+      max_travelers: 9,
+      segments: [{ from: fromAirport, to: toAirport, departure_date: "2026-08-15", duration: "1h 10m" }],
+    };
+
+    await apiService.saveFlight(flightObj);
+
     if (editingFlight) {
-      setFlights(prev =>
-        prev.map(f =>
-          f.id === editingFlight.id
-            ? {
-                ...f,
-                airline,
-                flight_number: flightNumber,
-                trip_type: tripType,
-                class: flightClass,
-                price: Number(price),
-                available_seats: Number(seats),
-                segments: [{ from: fromAirport, to: toAirport, departure_date: "2026-08-15" }],
-              }
-            : f
-        )
-      );
+      setFlights(prev => prev.map(f => f.id === flightObj.id ? flightObj : f));
     } else {
-      const newFlight: Flight = {
-        id: `fl-${Date.now()}`,
-        airline,
-        flight_number: flightNumber,
-        trip_type: tripType,
-        class: flightClass,
-        price: Number(price),
-        currency: "BDT",
-        available_seats: Number(seats),
-        max_travelers: 9,
-        segments: [{ from: fromAirport, to: toAirport, departure_date: "2026-08-15", duration: "1h 10m" }],
-      };
-      setFlights(prev => [newFlight, ...prev]);
+      setFlights(prev => [flightObj, ...prev]);
     }
     queryClient.invalidateQueries({ queryKey: ["flights"] });
     setIsModalOpen(false);

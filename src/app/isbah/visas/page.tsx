@@ -49,37 +49,39 @@ export default function AdminVisasPage() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this visa service entry?")) {
+      await apiService.deleteVisa(id);
       setVisas(prev => prev.filter(v => v.id !== id));
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const visaObj: Visa = {
+      id: editingVisa ? editingVisa.id : `vs-${Date.now()}`,
+      country,
+      visa_type: visaType,
+      processing_time: processingTime,
+      fee: Number(fee),
+      currency: "BDT",
+      add_on_services: editingVisa?.add_on_services || ["Express File Check"],
+      important_notes: editingVisa?.important_notes || "Valid passport required.",
+      documents_required: editingVisa?.documents_required || {
+        job_holders: ["Passport copy", "NOC"],
+        business_owners: ["Passport copy", "Trade License"],
+        students: ["Passport copy", "Student ID"],
+        others: ["Passport copy", "Bank statement"],
+      },
+      contact_info: editingVisa?.contact_info || { address_line1: "Isbah Visa Desk", hotline: "+880 1700-123456" },
+    };
+
+    await apiService.saveVisa(visaObj);
+
     if (editingVisa) {
-      setVisas(prev =>
-        prev.map(v => (v.id === editingVisa.id ? { ...v, country, visa_type: visaType, processing_time: processingTime, fee: Number(fee) } : v))
-      );
+      setVisas(prev => prev.map(v => v.id === visaObj.id ? visaObj : v));
     } else {
-      const newVisa: Visa = {
-        id: `vs-${Date.now()}`,
-        country,
-        visa_type: visaType,
-        processing_time: processingTime,
-        fee: Number(fee),
-        currency: "BDT",
-        add_on_services: ["Express File Check"],
-        important_notes: "Valid passport required.",
-        documents_required: {
-          job_holders: ["Passport copy", "NOC"],
-          business_owners: ["Passport copy", "Trade License"],
-          students: ["Passport copy", "Student ID"],
-          others: ["Passport copy", "Bank statement"],
-        },
-        contact_info: { address_line1: "Isbah Visa Desk", hotline: "+880 1700-123456" },
-      };
-      setVisas(prev => [newVisa, ...prev]);
+      setVisas(prev => [visaObj, ...prev]);
     }
     setIsModalOpen(false);
   };

@@ -58,54 +58,52 @@ export default function AdminToursPage() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this tour package?")) {
+      await apiService.deleteTour(id);
       setTours(prev => prev.filter(t => t.id !== id));
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const tourObj: Tour = {
+      id: editingTour ? editingTour.id : `tr-${Date.now()}`,
+      title,
+      location,
+      duration_days: Number(durationDays),
+      price_per_person: Number(price),
+      currency: "BDT",
+      category: category as any,
+      overview,
+      description: overview,
+      inclusions: editingTour?.inclusions || ["3-Star Hotel Stay", "Daily Breakfast", "Sightseeing Car Transfer"],
+      exclusions: editingTour?.exclusions || ["Airfare / Bus Ticket", "Shopping"],
+      requirements: editingTour?.requirements || ["Valid NID Copy"],
+      travel_tips: editingTour?.travel_tips || ["Carry comfortable footwear"],
+      itinerary: editingTour?.itinerary || [
+        { day: 1, title: "Arrival & Sightseeing", description: "Check-in and local tour." },
+        { day: 2, title: "Nature Exploration", description: "Full day sightseeing tour." }
+      ],
+      images: editingTour?.images || ["https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80"],
+      attractions: editingTour?.attractions || ["Local Scenic Points"],
+      activities: editingTour?.activities || ["Sightseeing", "Photography"],
+      pickup_locations: editingTour?.pickup_locations || ["City Center"],
+      availability_dates: editingTour?.availability_dates || [{ start_date: "2026-08-15", end_date: "2026-08-18" }],
+      max_group_size: editingTour?.max_group_size || 20,
+      min_age: editingTour?.min_age || 3,
+      cancellation_policy: editingTour?.cancellation_policy || "Free cancellation 72h prior",
+      refund_policy: editingTour?.refund_policy || "Standard refund",
+      latitude: editingTour?.latitude || 24.8949,
+      longitude: editingTour?.longitude || 91.8687,
+    };
+
+    await apiService.saveTour(tourObj);
+
     if (editingTour) {
-      setTours(prev =>
-        prev.map(t =>
-          t.id === editingTour.id
-            ? { ...t, title, location, duration_days: Number(durationDays), price_per_person: Number(price), category: category as any, overview }
-            : t
-        )
-      );
+      setTours(prev => prev.map(t => t.id === tourObj.id ? tourObj : t));
     } else {
-      const newTour: Tour = {
-        id: `tr-${Date.now()}`,
-        title,
-        location,
-        duration_days: Number(durationDays),
-        price_per_person: Number(price),
-        currency: "BDT",
-        category: category as any,
-        overview,
-        description: overview,
-        inclusions: ["3-Star Hotel Stay", "Daily Breakfast", "Sightseeing Car Transfer"],
-        exclusions: ["Airfare / Bus Ticket", "Shopping"],
-        requirements: ["Valid NID Copy"],
-        travel_tips: ["Carry comfortable footwear"],
-        itinerary: [
-          { day: 1, title: "Arrival & Sightseeing", description: "Check-in and local tour." },
-          { day: 2, title: "Nature Exploration", description: "Full day sightseeing tour." }
-        ],
-        images: ["https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80"],
-        attractions: ["Local Scenic Points"],
-        activities: ["Sightseeing", "Photography"],
-        pickup_locations: ["City Center"],
-        availability_dates: [{ start_date: "2026-08-15", end_date: "2026-08-18" }],
-        max_group_size: 20,
-        min_age: 3,
-        cancellation_policy: "Free cancellation 72h prior",
-        refund_policy: "Standard refund",
-        latitude: 24.8949,
-        longitude: 91.8687,
-      };
-      setTours(prev => [newTour, ...prev]);
+      setTours(prev => [tourObj, ...prev]);
     }
     setIsModalOpen(false);
   };

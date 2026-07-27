@@ -51,6 +51,13 @@ function HotelsContent() {
       setLoading(false);
     }
     loadHotels();
+
+    window.addEventListener("isbah_data_updated", loadHotels);
+    window.addEventListener("storage", loadHotels);
+    return () => {
+      window.removeEventListener("isbah_data_updated", loadHotels);
+      window.removeEventListener("storage", loadHotels);
+    };
   }, [selectedCity, selectedRating]);
 
   const toggleSaveHotel = async (hotel: Hotel, e: React.MouseEvent) => {
