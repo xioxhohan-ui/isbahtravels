@@ -11,11 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { MapPin, Star, Filter, ArrowRight, Tag, Heart } from "lucide-react";
+import { MapPin, Star, Filter, ArrowRight, Tag, Heart, Map } from "lucide-react";
 
 const GoogleMapView = dynamic(() => import("@/components/maps/google-map-view"), {
   ssr: false,
-  loading: () => <div className="h-48 w-full rounded-2xl bg-slate-100 skeleton border border-slate-200" />,
+  loading: () => <div className="h-44 w-full rounded-2xl bg-slate-100 skeleton border border-slate-200" />,
 });
 
 function HotelsContent() {
@@ -27,6 +27,7 @@ function HotelsContent() {
   const [selectedCity, setSelectedCity] = useState(initialCity);
   const [selectedRating, setSelectedRating] = useState<number>(0);
   const [selectedTag, setSelectedTag] = useState("All");
+  const [showMap, setShowMap] = useState(false);
   const [activeHotelMap, setActiveHotelMap] = useState<Hotel | null>(null);
   const [savedHotelIds, setSavedHotelIds] = useState<Set<string>>(new Set());
 
@@ -79,195 +80,173 @@ function HotelsContent() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 bg-white text-slate-900">
+    <div className="mx-auto max-w-7xl px-3 sm:px-5 py-4 space-y-3.5 bg-white text-slate-900">
       
-      {/* Compact Header Banner */}
-      <div className="rounded-2xl bg-slate-50 border border-slate-200 text-slate-900 p-4 sm:p-5 flex flex-col md:flex-row items-center justify-between gap-3 shadow-xs">
-        <div className="space-y-0.5">
-          <Badge variant="outline" className="font-bold text-[10px] py-0">🏨 Resort & Hotel Directory</Badge>
-          <h1 className="font-outfit text-xl sm:text-2xl font-black text-slate-900">
-            Book Hotels in {selectedCity || "Bangladesh"}
-          </h1>
-          <p className="text-xs text-slate-500 font-semibold">
-            Compare room rates, view location maps, and save favorites instantly.
-          </p>
-        </div>
-      </div>
+      {/* Compact Top Header & Quick Filter Bar */}
+      <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3.5 sm:p-4 space-y-3 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="font-outfit text-lg sm:text-xl font-black text-slate-900">
+                Hotels & Resorts {selectedCity ? `in ${selectedCity}` : ""}
+              </h1>
+              <Badge variant="outline" className="text-[9px] font-bold uppercase">{hotels.length} Properties</Badge>
+            </div>
+            <p className="text-[11px] text-slate-500 font-semibold">
+              Instant room booking, SSLCommerz verified payments, and free cancellation.
+            </p>
+          </div>
 
-      {/* Compact Hotel Search Tags Filter */}
-      <div className="flex items-center gap-1.5 overflow-x-auto border-b border-slate-100 pb-2.5 no-scrollbar">
-        <span className="text-xs font-bold text-slate-400 flex items-center gap-1 shrink-0 mr-1">
-          <Tag className="h-3 w-3" /> Types:
-        </span>
-        {["All", "Business", "Couple", "Families", "Friends", "Solo"].map((tag) => (
-          <button
-            key={tag}
-            onClick={() => setSelectedTag(tag)}
-            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 border ${
-              selectedTag === tag
-                ? "bg-slate-900 text-white border-slate-900 shadow-xs"
-                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-            }`}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowMap(!showMap)}
+            className="text-xs font-bold gap-1 rounded-xl h-8 self-start sm:self-auto"
           >
-            {tag === "All" ? "All Stays" : tag}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        
-        {/* Filters Sidebar */}
-        <div className="space-y-4 rounded-2xl border border-slate-200 p-3.5 bg-slate-50 h-fit">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-            <h3 className="font-bold text-slate-900 flex items-center gap-1.5 text-xs">
-              <Filter className="h-3.5 w-3.5 text-emerald-700" />
-              Filter Hotels
-            </h3>
-            <span className="text-[11px] text-slate-500 font-semibold">{hotels.length} Properties</span>
-          </div>
-
-          {/* City Selector */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">City Destination</label>
-            <div className="space-y-0.5 text-xs font-semibold text-slate-700">
-              {["All Cities", "Cox's Bazar", "Sylhet", "Dhaka", "Chittagong"].map((city) => (
-                <label key={city} className="flex items-center gap-2 cursor-pointer p-1 rounded-md hover:bg-white text-xs">
-                  <input
-                    type="radio"
-                    name="city"
-                    checked={(city === "All Cities" && !selectedCity) || selectedCity === city}
-                    onChange={() => setSelectedCity(city === "All Cities" ? "" : city)}
-                    className="accent-slate-900 h-3.5 w-3.5"
-                  />
-                  <span>{city}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Star Rating Filter */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Star Rating</label>
-            <div className="flex items-center gap-1">
-              {[0, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  onClick={() => setSelectedRating(star)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
-                    selectedRating === star
-                      ? "bg-slate-900 text-white"
-                      : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
-                  }`}
-                >
-                  {star === 0 ? "All" : `${star}★`}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Active Map Preview Widget */}
-          {activeHotelMap && (
-            <div className="pt-3 border-t border-slate-200 space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 block">Map Preview</span>
-              <GoogleMapView
-                latitude={activeHotelMap.latitude}
-                longitude={activeHotelMap.longitude}
-                title={activeHotelMap.name}
-                address={activeHotelMap.address}
-                nearby={activeHotelMap.nearby}
-              />
-            </div>
-          )}
+            <Map className="h-3.5 w-3.5 text-emerald-700" />
+            <span>{showMap ? "Hide Map" : "Show Map View"}</span>
+          </Button>
         </div>
 
-        {/* Hotel Cards Catalog */}
-        <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-          {loading ? (
-            <div className="col-span-full p-8 text-center text-slate-500 font-bold text-xs">
-              Loading hotel listings...
-            </div>
-          ) : hotels.length === 0 ? (
-            <div className="col-span-full p-8 text-center border border-dashed border-slate-300 rounded-2xl space-y-2 text-xs">
-              <p className="font-bold text-slate-700">No hotels found matching criteria.</p>
-              <Button onClick={() => { setSelectedCity(""); setSelectedRating(0); setSelectedTag("All"); }} size="sm" variant="outline" className="text-xs font-bold">Clear Filters</Button>
-            </div>
-          ) : (
-            hotels.map((hotel) => {
-              const isFavorite = savedHotelIds.has(hotel.id);
-              return (
-                <Card
-                  key={hotel.id}
-                  onMouseEnter={() => setActiveHotelMap(hotel)}
-                  className="overflow-hidden flex flex-col border border-slate-200 bg-white hover:shadow-md transition-all rounded-xl"
-                >
-                  <div className="relative h-36 w-full overflow-hidden bg-slate-100">
-                    <Image
-                      src={hotel.images[0]}
-                      alt={hotel.name}
-                      fill
-                      sizes="(max-width: 768px) 100vw, 33vw"
-                      className="object-cover"
-                    />
-                    <div className="absolute top-2 left-2 bg-white/90 px-2 py-0.5 rounded-md text-slate-900 text-[11px] font-bold border border-slate-200 flex items-center gap-0.5">
-                      <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                      <span>{hotel.star_rating}★</span>
-                    </div>
+        {/* Compact Horizontal Quick Filters */}
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200 text-xs">
+          {/* City Filter Buttons */}
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+            <span className="text-[10px] font-extrabold uppercase text-slate-400 mr-1">City:</span>
+            {["All", "Cox's Bazar", "Sylhet", "Dhaka", "Chittagong"].map((city) => (
+              <button
+                key={city}
+                onClick={() => setSelectedCity(city === "All" ? "" : city)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 border ${
+                  (!selectedCity && city === "All") || selectedCity === city
+                    ? "bg-slate-900 text-white border-slate-900 shadow-xs"
+                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                }`}
+              >
+                {city}
+              </button>
+            ))}
+          </div>
 
-                    {/* Favorite Bookmark Button */}
-                    <button
-                      onClick={(e) => toggleSaveHotel(hotel, e)}
-                      title={isFavorite ? "Remove from Favorites" : "Save to Favorites"}
-                      className={`absolute top-2 right-2 p-1.5 rounded-full border transition-all ${
-                        isFavorite ? "bg-rose-500 text-white border-rose-500" : "bg-white/90 text-slate-700 border-slate-200 hover:bg-rose-50 hover:text-rose-600"
-                      }`}
-                    >
-                      <Heart className={`h-3.5 w-3.5 ${isFavorite ? "fill-current" : ""}`} />
-                    </button>
+          {/* Star Filter Buttons */}
+          <div className="flex items-center gap-1 ml-auto">
+            <span className="text-[10px] font-extrabold uppercase text-slate-400 mr-1">Stars:</span>
+            {[0, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                onClick={() => setSelectedRating(star)}
+                className={`px-2 py-0.5 rounded-md text-[11px] font-bold border ${
+                  selectedRating === star
+                    ? "bg-amber-500 text-white border-amber-500"
+                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                {star === 0 ? "All" : `${star}★`}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
-                    {/* Discount Badge */}
-                    {hotel.discount && hotel.discount > 0 && (
-                      <div className="absolute bottom-2 left-2 bg-rose-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
-                        {hotel.discount}% OFF
-                      </div>
-                    )}
+      {/* Collapsible Google Map Banner */}
+      {showMap && activeHotelMap && (
+        <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+          <GoogleMapView
+            latitude={activeHotelMap.latitude}
+            longitude={activeHotelMap.longitude}
+            title={activeHotelMap.name}
+            address={activeHotelMap.address}
+            nearby={activeHotelMap.nearby}
+          />
+        </div>
+      )}
+
+      {/* High-Density Hotel Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {loading ? (
+          <div className="col-span-full p-8 text-center text-slate-500 font-bold text-xs">
+            Loading hotel listings...
+          </div>
+        ) : hotels.length === 0 ? (
+          <div className="col-span-full p-8 text-center border border-dashed border-slate-300 rounded-2xl space-y-2 text-xs">
+            <p className="font-bold text-slate-700">No hotels found matching selected filters.</p>
+            <Button onClick={() => { setSelectedCity(""); setSelectedRating(0); }} size="sm" variant="outline" className="text-xs font-bold rounded-xl">Clear Filters</Button>
+          </div>
+        ) : (
+          hotels.map((hotel) => {
+            const isFavorite = savedHotelIds.has(hotel.id);
+            return (
+              <Card
+                key={hotel.id}
+                onMouseEnter={() => setActiveHotelMap(hotel)}
+                className="overflow-hidden flex flex-col border border-slate-200 bg-white hover:shadow-md transition-all rounded-2xl"
+              >
+                <div className="relative h-32 w-full overflow-hidden bg-slate-100">
+                  <Image
+                    src={hotel.images[0]}
+                    alt={hotel.name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                    className="object-cover"
+                  />
+                  <div className="absolute top-2 left-2 bg-white/95 backdrop-blur-xs px-2 py-0.5 rounded-lg text-slate-900 text-[10px] font-black border border-slate-200 flex items-center gap-0.5 shadow-xs">
+                    <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                    <span>{hotel.star_rating}★</span>
                   </div>
 
-                  <CardHeader className="p-3 pb-1 space-y-0.5">
-                    <div className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
-                      <MapPin className="h-3 w-3 shrink-0" />
-                      <span className="line-clamp-1">{hotel.area}, {hotel.city}</span>
+                  {/* Bookmark Button */}
+                  <button
+                    onClick={(e) => toggleSaveHotel(hotel, e)}
+                    title={isFavorite ? "Remove from Favorites" : "Save to Favorites"}
+                    className={`absolute top-2 right-2 p-1.5 rounded-full border transition-all shadow-xs ${
+                      isFavorite ? "bg-rose-500 text-white border-rose-500" : "bg-white/95 text-slate-700 border-slate-200 hover:bg-rose-50 hover:text-rose-600"
+                    }`}
+                  >
+                    <Heart className={`h-3.5 w-3.5 ${isFavorite ? "fill-current" : ""}`} />
+                  </button>
+
+                  {/* Discount Badge */}
+                  {hotel.discount && hotel.discount > 0 && (
+                    <div className="absolute bottom-2 left-2 bg-rose-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-xs">
+                      {hotel.discount}% OFF
                     </div>
-                    <CardTitle className="text-sm font-bold line-clamp-1 text-slate-900">
-                      {hotel.name}
-                    </CardTitle>
-                  </CardHeader>
+                  )}
+                </div>
 
-                  <CardContent className="p-3 pt-0 flex-1">
-                    <p className="text-[11px] text-slate-600 line-clamp-2 leading-tight">
-                      {hotel.description}
-                    </p>
-                  </CardContent>
+                <CardHeader className="p-3 pb-1 space-y-0.5">
+                  <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-700">
+                    <MapPin className="h-3 w-3 shrink-0" />
+                    <span className="line-clamp-1">{hotel.area}, {hotel.city}</span>
+                  </div>
+                  <CardTitle className="text-xs font-black line-clamp-1 text-slate-900">
+                    {hotel.name}
+                  </CardTitle>
+                </CardHeader>
 
-                  <CardFooter className="p-3 pt-2 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
-                    <div>
-                      <span className="text-[9px] uppercase font-bold text-slate-400 block">Nightly rate</span>
-                      <span className="text-sm font-black text-slate-900">
-                        {formatBDT(hotel.min_price || 6500)}
-                      </span>
-                    </div>
-                    <Link href={`/hotels/${hotel.id}`}>
-                      <Button size="sm" className="font-bold text-xs rounded-lg h-7 px-2.5 gap-1">
-                        <span>View</span>
-                        <ArrowRight className="h-3 w-3" />
-                      </Button>
-                    </Link>
-                  </CardFooter>
-                </Card>
-              );
-            })
-          )}
-        </div>
+                <CardContent className="p-3 pt-0 flex-1">
+                  <p className="text-[10px] text-slate-500 line-clamp-2 leading-snug">
+                    {hotel.description}
+                  </p>
+                </CardContent>
 
+                <CardFooter className="p-2.5 pt-2 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+                  <div>
+                    <span className="text-[8px] uppercase font-extrabold text-slate-400 block">From</span>
+                    <span className="text-xs font-black text-slate-900">
+                      {formatBDT(hotel.min_price || 6500)}
+                    </span>
+                  </div>
+                  <Link href={`/hotels/${hotel.id}`}>
+                    <Button size="sm" className="font-bold text-[11px] rounded-xl h-7 px-2.5 gap-1 bg-slate-900 hover:bg-slate-800 text-white">
+                      <span>Book</span>
+                      <ArrowRight className="h-3 w-3" />
+                    </Button>
+                  </Link>
+                </CardFooter>
+              </Card>
+            );
+          })
+        )}
       </div>
 
     </div>
