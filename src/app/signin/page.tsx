@@ -13,12 +13,14 @@ function SignInContent() {
   const searchParams = useSearchParams();
   const redirectPath = searchParams.get("redirect") || "/dashboard";
   const errorMessageParam = searchParams.get("error");
+  const successMessageParam = searchParams.get("message");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState(errorMessageParam ? "Authentication failed. Please try again." : "");
+  const [message, setMessage] = useState(successMessageParam || "");
 
   // Phone modal state for Google OAuth users missing phone number
   const [showPhoneModal, setShowPhoneModal] = useState(false);
@@ -30,22 +32,26 @@ function SignInContent() {
   useEffect(() => {
     // Check if user is already signed in & missing phone
     async function checkSession() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Fetch profile
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("phone")
-          .eq("id", user.id)
-          .single();
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          // Fetch profile safely
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("phone")
+            .eq("id", user.id)
+            .maybeSingle();
 
-        if (profile && !profile.phone) {
-          setCurrentUserId(user.id);
-          setCurrentUserEmail(user.email || "");
-          setShowPhoneModal(true);
-        } else {
-          router.push(redirectPath);
+          if (profile && !profile.phone) {
+            setCurrentUserId(user.id);
+            setCurrentUserEmail(user.email || "");
+            setShowPhoneModal(true);
+          } else {
+            router.push(redirectPath);
+          }
         }
+      } catch (e) {
+        console.warn("Session check warning:", e);
       }
     }
     checkSession();
@@ -55,6 +61,7 @@ function SignInContent() {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setMessage("");
 
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
@@ -63,22 +70,28 @@ function SignInContent() {
       });
 
       if (signInError) {
-        setError(signInError.message);
+        let msg = signInError.message;
+        if (msg.includes("Invalid login credentials")) {
+          msg = "Invalid email or password. Please verify your credentials or create a new account.";
+        } else if (msg.includes("Email not confirmed")) {
+          msg = "Email not confirmed. Please check your inbox or try signing in again.";
+        }
+        setError(msg);
         setLoading(false);
         return;
       }
 
       if (data.user) {
-        // Check phone number in profile
+        // Save legacy session fallback
+        document.cookie = `isbah_user_session=${encodeURIComponent(email)}; path=/; max-age=86400`;
+        localStorage.setItem("isbah_user_email", email);
+
+        // Fetch profile safely
         const { data: profile } = await supabase
           .from("profiles")
           .select("phone")
           .eq("id", data.user.id)
-          .single();
-
-        // Save legacy session fallback
-        document.cookie = `isbah_user_session=${encodeURIComponent(email)}; path=/; max-age=86400`;
-        localStorage.setItem("isbah_user_email", email);
+          .maybeSingle();
 
         if (profile && !profile.phone) {
           setCurrentUserId(data.user.id);
@@ -89,7 +102,7 @@ function SignInContent() {
         }
       }
     } catch (err: any) {
-      setError(err?.message || "An unexpected error occurred.");
+      setError(err?.message || "An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -143,6 +156,13 @@ function SignInContent() {
           <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2 animate-fade-in">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
+          </div>
+        )}
+
+        {message && (
+          <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2 animate-fade-in">
+            <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
+            <span>{message}</span>
           </div>
         )}
 

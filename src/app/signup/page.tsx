@@ -60,16 +60,20 @@ function SignUpContent() {
       }
 
       if (data.user) {
-        // Upsert into profiles table
-        await supabase.from("profiles").upsert({
-          id: data.user.id,
-          email: email,
-          display_name: displayName,
-          phone: phone,
-          role: "user",
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
+        // Upsert into profiles table safely (handle_new_user database trigger also handles this automatically)
+        try {
+          await supabase.from("profiles").upsert({
+            id: data.user.id,
+            email: email,
+            display_name: displayName,
+            phone: phone,
+            role: "user",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        } catch (profileErr) {
+          console.warn("Profile creation warning:", profileErr);
+        }
 
         // Send welcome email (fire-and-forget, non-blocking)
         fetch("/api/v1/email/welcome", {
@@ -81,6 +85,19 @@ function SignUpContent() {
         // Set session fallback
         document.cookie = `isbah_user_session=${encodeURIComponent(email)}; path=/; max-age=86400`;
         localStorage.setItem("isbah_user_email", email);
+
+        if (!data.session) {
+          // If auto session wasn't returned on sign up, sign in automatically with password
+          const { error: autoSignInErr } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+
+          if (autoSignInErr) {
+            router.push(`/signin?message=${encodeURIComponent("Account created successfully! Please sign in with your credentials.")}`);
+            return;
+          }
+        }
 
         router.push(redirectPath);
       }
