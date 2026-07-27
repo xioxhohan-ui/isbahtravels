@@ -131,7 +131,7 @@ export default function HeroSearchTabs() {
 
   const handleSearchTours = (e: React.FormEvent) => {
     e.preventDefault();
-    router.push(`/tours?q=${encodeURIComponent(tourQuery)}`);
+    router.push(`/tour/list?location=${encodeURIComponent(tourQuery)}&minPrice=0&maxPrice=150000&sort=POPULARITY`);
   };
 
   const handleSearchVisa = (e: React.FormEvent) => {
