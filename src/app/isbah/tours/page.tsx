@@ -25,6 +25,7 @@ export default function AdminToursPage() {
   const [price, setPrice] = useState(8500);
   const [category, setCategory] = useState("Domestic");
   const [overview, setOverview] = useState("");
+  const [travelDate, setTravelDate] = useState(new Date().toISOString().split("T")[0]);
 
   useEffect(() => {
     async function loadTours() {
@@ -44,6 +45,7 @@ export default function AdminToursPage() {
     setPrice(7200);
     setCategory("Domestic");
     setOverview("Explore Jaflong, Ratargul Swamp Forest, and Sreemangal Tea Gardens.");
+    setTravelDate(new Date().toISOString().split("T")[0]);
     setIsModalOpen(true);
   };
 
@@ -55,6 +57,7 @@ export default function AdminToursPage() {
     setPrice(tour.price_per_person);
     setCategory(tour.category || "Domestic");
     setOverview(tour.overview);
+    setTravelDate((tour as any).created_at ? (tour as any).created_at.split("T")[0] : new Date().toISOString().split("T")[0]);
     setIsModalOpen(true);
   };
 
@@ -237,6 +240,17 @@ export default function AdminToursPage() {
                     value={price}
                     onChange={(e) => setPrice(Number(e.target.value))}
                     className="w-full rounded-xl border border-slate-200 p-2.5 font-bold outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-400 uppercase text-[10px] mb-1">Tour Departure / Post Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={travelDate}
+                    onChange={(e) => setTravelDate(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 p-2.5 font-bold outline-none text-xs"
                   />
                 </div>
               </div>

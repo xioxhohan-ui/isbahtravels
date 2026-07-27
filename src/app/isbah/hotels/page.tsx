@@ -30,6 +30,7 @@ export default function AdminHotelsPage() {
   const [latitude, setLatitude] = useState(21.4172);
   const [longitude, setLongitude] = useState(91.9804);
   const [autoCollecting, setAutoCollecting] = useState(false);
+  const [availableDate, setAvailableDate] = useState(new Date().toISOString().split("T")[0]);
 
   useEffect(() => {
     async function loadHotels() {
@@ -52,6 +53,7 @@ export default function AdminHotelsPage() {
     setMinPrice(7800);
     setLatitude(21.4172);
     setLongitude(91.9804);
+    setAvailableDate(new Date().toISOString().split("T")[0]);
     setIsModalOpen(true);
   };
 
@@ -66,6 +68,7 @@ export default function AdminHotelsPage() {
     setMinPrice(hotel.min_price || 6500);
     setLatitude(hotel.latitude || 21.4172);
     setLongitude(hotel.longitude || 91.9804);
+    setAvailableDate((hotel as any).created_at ? (hotel as any).created_at.split("T")[0] : new Date().toISOString().split("T")[0]);
     setIsModalOpen(true);
   };
 
@@ -266,6 +269,17 @@ export default function AdminHotelsPage() {
                     value={longitude}
                     onChange={(e) => setLongitude(Number(e.target.value))}
                     className="w-full rounded-xl border border-slate-200 p-2.5 font-bold outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-400 uppercase text-[10px] mb-1">Hotel Post / Availability Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={availableDate}
+                    onChange={(e) => setAvailableDate(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 p-2.5 font-bold outline-none text-xs"
                   />
                 </div>
               </div>

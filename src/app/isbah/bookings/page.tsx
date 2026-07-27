@@ -412,12 +412,43 @@ export default function AdminBookingsPage() {
                   </span>
                 </div>
 
-                <div className="flex justify-between py-1.5 border-b border-slate-100">
+                <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
                   <span className="font-semibold text-slate-500">Travel / Journey Date:</span>
-                  <span className="font-bold text-slate-900 flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <Calendar className="h-3.5 w-3.5 text-slate-500" />
-                    {selectedBookingModal.details?.travel_date || new Date(selectedBookingModal.created_at).toLocaleDateString()}
-                  </span>
+                    <input
+                      type="date"
+                      value={selectedBookingModal.details?.travel_date || selectedBookingModal.created_at.split("T")[0]}
+                      onChange={async (e) => {
+                        const newDate = e.target.value;
+                        const updatedBooking = {
+                          ...selectedBookingModal,
+                          created_at: new Date(newDate).toISOString(),
+                          details: { ...selectedBookingModal.details, travel_date: newDate },
+                        };
+                        setSelectedBookingModal(updatedBooking);
+                        setBookings(prev => prev.map(b => b.id === updatedBooking.id ? updatedBooking : b));
+
+                        if (typeof window !== "undefined") {
+                          const local = JSON.parse(localStorage.getItem("isbah_local_bookings") || "[]");
+                          const idx = local.findIndex((b: any) => b.id === updatedBooking.id);
+                          if (idx !== -1) {
+                            local[idx] = updatedBooking;
+                            localStorage.setItem("isbah_local_bookings", JSON.stringify(local));
+                            window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+                          }
+                        }
+
+                        if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+                          try {
+                            const supabase = createClient();
+                            await supabase.from("bookings").update({ details: updatedBooking.details }).eq("id", updatedBooking.id);
+                          } catch {}
+                        }
+                      }}
+                      className="font-bold text-slate-900 border border-slate-200 bg-slate-50 rounded-lg px-2 py-1 text-xs outline-none cursor-pointer hover:border-slate-400"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex justify-between py-1.5 border-b border-slate-100">

@@ -39,6 +39,7 @@ export default function AdminFlightsPage() {
   const [flightClass, setFlightClass] = useState<"economy" | "business">("economy");
   const [price, setPrice] = useState(4800);
   const [seats, setSeats] = useState(25);
+  const [flightDate, setFlightDate] = useState(new Date().toISOString().split("T")[0]);
 
   const handleOpenAddModal = () => {
     setEditingFlight(null);
@@ -46,6 +47,7 @@ export default function AdminFlightsPage() {
     setFlightNumber(`BG-${Math.floor(100 + Math.random() * 900)}`);
     setPrice(5200);
     setSeats(20);
+    setFlightDate(new Date().toISOString().split("T")[0]);
     setIsModalOpen(true);
   };
 
@@ -59,6 +61,7 @@ export default function AdminFlightsPage() {
     setFlightClass(flight.class as any);
     setPrice(flight.price);
     setSeats(flight.available_seats);
+    setFlightDate(flight.segments[0]?.departure_date || new Date().toISOString().split("T")[0]);
     setIsModalOpen(true);
   };
 
@@ -82,7 +85,7 @@ export default function AdminFlightsPage() {
       currency: "BDT",
       available_seats: Number(seats),
       max_travelers: 9,
-      segments: [{ from: fromAirport, to: toAirport, departure_date: "2026-08-15", duration: "1h 10m" }],
+      segments: [{ from: fromAirport, to: toAirport, departure_date: flightDate, duration: "1h 10m" }],
     };
 
     await apiService.saveFlight(flightObj);
@@ -242,6 +245,17 @@ export default function AdminFlightsPage() {
                     value={seats}
                     onChange={(e) => setSeats(Number(e.target.value))}
                     className="w-full rounded-xl border border-slate-200 p-2.5 font-bold outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-400 uppercase text-[10px] mb-1">Flight Departure Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={flightDate}
+                    onChange={(e) => setFlightDate(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 p-2.5 font-bold outline-none text-xs"
                   />
                 </div>
               </div>

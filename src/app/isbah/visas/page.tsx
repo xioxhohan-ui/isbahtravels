@@ -20,6 +20,7 @@ export default function AdminVisasPage() {
   const [visaType, setVisaType] = useState("E-Visa (30 Days)");
   const [processingTime, setProcessingTime] = useState("3 - 5 Days");
   const [fee, setFee] = useState(7500);
+  const [postingDate, setPostingDate] = useState(new Date().toISOString().split("T")[0]);
 
   useEffect(() => {
     async function loadVisas() {
@@ -37,6 +38,7 @@ export default function AdminVisasPage() {
     setVisaType("30 Days Tourist E-Visa");
     setProcessingTime("3 - 5 Working Days");
     setFee(7500);
+    setPostingDate(new Date().toISOString().split("T")[0]);
     setIsModalOpen(true);
   };
 
@@ -46,6 +48,7 @@ export default function AdminVisasPage() {
     setVisaType(visa.visa_type);
     setProcessingTime(visa.processing_time);
     setFee(visa.fee);
+    setPostingDate((visa as any).created_at ? (visa as any).created_at.split("T")[0] : new Date().toISOString().split("T")[0]);
     setIsModalOpen(true);
   };
 
@@ -196,6 +199,17 @@ export default function AdminVisasPage() {
                     value={fee}
                     onChange={(e) => setFee(Number(e.target.value))}
                     className="w-full rounded-xl border border-slate-200 p-2.5 font-bold outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-400 uppercase text-[10px] mb-1">Posting / Validity Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={postingDate}
+                    onChange={(e) => setPostingDate(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 p-2.5 font-bold outline-none text-xs"
                   />
                 </div>
               </div>
