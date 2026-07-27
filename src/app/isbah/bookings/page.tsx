@@ -141,20 +141,100 @@ export default function AdminBookingsPage() {
     window.open(url, "_blank");
   };
 
+  const [unreadIds, setUnreadIds] = useState<string[]>([]);
+  const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    try {
+      const storedUnread = JSON.parse(localStorage.getItem("isbah_unread_bookings") || "[]");
+      setUnreadIds(storedUnread);
+    } catch {}
+  }, []);
+
+  const persistUnread = (newIds: string[]) => {
+    setUnreadIds(newIds);
+    try {
+      localStorage.setItem("isbah_unread_bookings", JSON.stringify(newIds));
+      window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+    } catch {}
+  };
+
+  const handleToggleUnread = (id: string) => {
+    if (unreadIds.includes(id)) {
+      persistUnread(unreadIds.filter(item => item !== id));
+    } else {
+      persistUnread([...unreadIds, id]);
+    }
+    setContextMenu(null);
+  };
+
+  const handleMarkAllRead = () => {
+    persistUnread([]);
+    setToast({ msg: "All bookings marked as read.", ok: true });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    setContextMenu({ id, x: e.clientX, y: e.clientY });
+  };
+
   const handleDeleteBooking = async (id: string) => {
-    if (confirm(`Are you sure you want to delete booking #${id}? This action cannot be undone.`)) {
+    const booking = bookings.find(b => b.id === id);
+    const customerName = booking?.details?.customer_name || booking?.details?.lead_passenger || "Customer";
+    const phone = booking?.details?.customer_phone || booking?.details?.phone || "N/A";
+
+    if (confirm(`Are you sure you want to permanently delete booking #${id}? (Customer: ${customerName}, Phone: ${phone}). This item will be permanently removed.`)) {
       await apiService.deleteBooking(id);
+      
+      // Log permanent deletion audit entry
+      await apiService.logRankingChange({
+        entity_type: "booking",
+        entity_id: id,
+        old_rank: booking?.display_order || 0,
+        new_rank: 0,
+        old_visibility: true,
+        new_visibility: false,
+      });
+
       setBookings(prev => prev.filter(b => b.id !== id));
       if (selectedBookingModal?.id === id) {
         setSelectedBookingModal(null);
       }
-      setToast({ msg: `Booking #${id} deleted successfully.`, ok: true });
+      setToast({ msg: `Booking #${id} permanently deleted and audit log recorded.`, ok: true });
       setTimeout(() => setToast(null), 4000);
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" onClick={() => setContextMenu(null)}>
+
+      {/* Right Click Context Menu */}
+      {contextMenu && (
+        <div
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          className="fixed z-50 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 w-48 text-xs font-bold space-y-1"
+        >
+          <button
+            onClick={() => handleToggleUnread(contextMenu.id)}
+            className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 flex items-center justify-between text-slate-800"
+          >
+            <span>{unreadIds.includes(contextMenu.id) ? "Mark as Read" : "Mark as Unread"}</span>
+            <Mail className="h-4 w-4 text-blue-600" />
+          </button>
+          <button
+            onClick={() => {
+              const b = bookings.find(item => item.id === contextMenu.id);
+              if (b) setSelectedBookingModal(b);
+              setContextMenu(null);
+            }}
+            className="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 flex items-center justify-between text-slate-800"
+          >
+            <span>View Full Details</span>
+            <Eye className="h-4 w-4 text-emerald-600" />
+          </button>
+        </div>
+      )}
 
       {/* Toast */}
       {toast && (
@@ -173,8 +253,20 @@ export default function AdminBookingsPage() {
             </span>
           </div>
           <p className="text-xs text-slate-500 font-semibold">
-            View full booking records, customer phone numbers, receipts, and confirm/cancel status.
+            Right click any booking or tap phone controls to mark as unread / read.
           </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {unreadIds.length > 0 && (
+            <Badge variant="destructive" className="font-bold text-[10px] animate-pulse">
+              {unreadIds.length} Unread Bookings
+            </Badge>
+          )}
+          <Button onClick={handleMarkAllRead} size="sm" variant="outline" className="font-bold text-xs gap-1.5 rounded-xl border-slate-300">
+            <Mail className="h-3.5 w-3.5 text-blue-600" />
+            <span>Mark All as Read</span>
+          </Button>
         </div>
 
         {/* Status Filters */}
@@ -244,10 +336,18 @@ export default function AdminBookingsPage() {
                 </tr>
               ) : filteredBookings.map((b) => {
                 const phoneNum = b.details?.customer_phone || b.details?.phone || "+880 1711-998877";
+                const isUnread = unreadIds.includes(b.id);
                 return (
-                  <tr key={b.id} className="hover:bg-slate-50 transition-colors">
+                  <tr
+                    key={b.id}
+                    onContextMenu={(e) => handleContextMenu(e, b.id)}
+                    className={`hover:bg-slate-50 transition-colors ${isUnread ? "bg-blue-50/50" : ""}`}
+                  >
                     <td className="p-4 font-bold text-slate-900 font-mono text-[10px]">
                       <div className="flex items-center gap-1.5">
+                        {isUnread && (
+                          <span className="h-2 w-2 rounded-full bg-blue-600 animate-pulse shrink-0" title="Unread Booking" />
+                        )}
                         <button
                           onClick={() => handleToggleStarBooking(b)}
                           title="Star / Favorite Booking"
@@ -280,6 +380,14 @@ export default function AdminBookingsPage() {
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleToggleUnread(b.id)}
+                          title={isUnread ? "Mark as Read" : "Mark as Unread"}
+                          className={`p-2 rounded-xl text-xs font-bold border transition-colors ${isUnread ? "bg-blue-100 text-blue-800 border-blue-300" : "bg-slate-100 text-slate-600 hover:bg-slate-200 border-slate-200"}`}
+                        >
+                          <Mail className="h-3.5 w-3.5" />
+                        </button>
+
                         <Button
                           size="sm"
                           variant="outline"
