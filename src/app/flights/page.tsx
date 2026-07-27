@@ -21,6 +21,13 @@ function FlightsContent() {
 
   const [selectedAirline, setSelectedAirline] = useState("All");
 
+  useEffect(() => {
+    const fromCode = initialFrom.match(/\(([^)]+)\)/)?.[1] || "DAC";
+    const toCode = initialTo.match(/\(([^)]+)\)/)?.[1] || "CXB";
+    const trips = `${fromCode},${toCode},2026-07-31`;
+    router.replace(`/flight/list?adult=1&child=0&child_age=&infant=0&cabin_class=Economy&trips=${encodeURIComponent(trips)}`);
+  }, [initialFrom, initialTo, router]);
+
   // User-facing pages rely on React Query (stale-while-revalidate + window focus refetch) without Realtime
   const { data: flights = [], isLoading, refetch } = useQuery({
     queryKey: ["flights", initialFrom, initialTo, initialType, initialClass],

@@ -103,7 +103,20 @@ export default function HeroSearchTabs() {
 
   const handleSearchFlights = (e: React.FormEvent) => {
     e.preventDefault();
-    router.push(`/flights?from=${encodeURIComponent(flightFrom)}&to=${encodeURIComponent(flightTo)}&type=${flightType}&class=${flightClass}`);
+    const fromCode = flightFrom.match(/\(([^)]+)\)/)?.[1] || "DAC";
+    const toCode = flightTo.match(/\(([^)]+)\)/)?.[1] || "CXB";
+
+    let trips = `${fromCode},${toCode},${departDate}`;
+    if (flightType === "multicity" && multiCitySegments.length > 0) {
+      trips = multiCitySegments.map(s => {
+        const fc = s.from.match(/\(([^)]+)\)/)?.[1] || "DAC";
+        const tc = s.to.match(/\(([^)]+)\)/)?.[1] || "CXB";
+        return `${fc},${tc},${s.departDate}`;
+      }).join("|");
+    }
+
+    const cClass = flightClass.toLowerCase() === "business" ? "Business" : "Economy";
+    router.push(`/flight/list?adult=${adultsCount}&child=${childrenCount}&child_age=&infant=${infantsCount}&cabin_class=${cClass}&trips=${encodeURIComponent(trips)}`);
   };
 
   const handleSearchHotels = (e: React.FormEvent) => {
