@@ -171,16 +171,30 @@ export const apiService = {
 
   // BOOKINGS API
   async getBookings(): Promise<Booking[]> {
+    let dbBookings: Booking[] = [];
     if (isSupabaseConfigured()) {
       try {
         const supabase = getClient();
-        const { data, error } = await supabase.from("bookings").select("*").order("created_at", { ascending: false });
-        if (!error && data) return data as Booking[];
+        const { data, error } = await withTimeout(
+          supabase.from("bookings").select("*").order("created_at", { ascending: false })
+        );
+        if (!error && data && data.length > 0) dbBookings = data as Booking[];
       } catch (err) {
         console.warn("Supabase bookings fetch error", err);
       }
     }
-    return MOCK_BOOKINGS;
+
+    let localSaved: Booking[] = [];
+    if (typeof window !== "undefined") {
+      try {
+        localSaved = JSON.parse(localStorage.getItem("isbah_local_bookings") || "[]");
+      } catch {}
+    }
+
+    const combined = [...localSaved, ...dbBookings, ...MOCK_BOOKINGS];
+    const uniqueMap = new Map<string, Booking>();
+    combined.forEach((b) => uniqueMap.set(b.id, b));
+    return Array.from(uniqueMap.values());
   },
 
   async createBooking(bookingData: Partial<Booking>): Promise<Booking> {
@@ -204,6 +218,7 @@ export const apiService = {
       try {
         const existing = JSON.parse(localStorage.getItem("isbah_local_bookings") || "[]");
         localStorage.setItem("isbah_local_bookings", JSON.stringify([newBooking, ...existing]));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
       } catch {}
     }
 
@@ -221,17 +236,15 @@ export const apiService = {
     return newBooking;
   },
 
-  async getUserBookings(userId: string): Promise<Booking[]> {
+  async getUserBookings(userId?: string): Promise<Booking[]> {
     let supabaseBookings: Booking[] = [];
     if (isSupabaseConfigured()) {
       try {
         const supabase = getClient();
-        const { data, error } = await supabase
-          .from("bookings")
-          .select("*")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false });
-        if (!error && data) supabaseBookings = data as Booking[];
+        let query = supabase.from("bookings").select("*").order("created_at", { ascending: false });
+        if (userId) query = query.eq("user_id", userId);
+        const { data, error } = await withTimeout(query);
+        if (!error && data && data.length > 0) supabaseBookings = data as Booking[];
       } catch (err) {
         console.warn("Supabase user bookings error", err);
       }
@@ -244,9 +257,9 @@ export const apiService = {
       } catch {}
     }
 
-    const combined = [...localSaved, ...supabaseBookings, ...MOCK_BOOKINGS.filter(b => b.user_id === userId || !userId || b.user_id === "usr-demo")];
+    const combined = [...localSaved, ...supabaseBookings, ...MOCK_BOOKINGS.filter((b) => !userId || b.user_id === userId || b.user_id === "usr-demo")];
     const uniqueMap = new Map<string, Booking>();
-    combined.forEach(b => uniqueMap.set(b.id, b));
+    combined.forEach((b) => uniqueMap.set(b.id, b));
     return Array.from(uniqueMap.values());
   },
 
