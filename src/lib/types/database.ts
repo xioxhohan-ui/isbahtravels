@@ -255,6 +255,18 @@ export interface TourInquiry {
   created_at: string;
 }
 
+export interface RankingLog {
+  id: string;
+  admin_id?: string;
+  entity_type: 'flight' | 'hotel' | 'tour' | 'visa' | 'booking';
+  entity_id: string;
+  old_rank: number;
+  new_rank: number;
+  old_visibility: boolean;
+  new_visibility: boolean;
+  created_at: string;
+}
+
 export interface SavedItem {
   id: string;
   user_id: string;

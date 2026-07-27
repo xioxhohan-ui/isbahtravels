@@ -52,15 +52,18 @@ function filterDeleted<T extends { id: string }>(items: T[]): T[] {
   return items.filter(item => !deleted.has(item.id));
 }
 
-function sortByRankAndStar<T extends { is_starred?: boolean; rank_priority?: number }>(items: T[]): T[] {
-  return [...items].sort((a, b) => {
-    const starA = a.is_starred ? 1 : 0;
-    const starB = b.is_starred ? 1 : 0;
-    if (starA !== starB) return starB - starA;
+export function computeDisplayOrder(item: { is_starred?: boolean; star_rank?: number; admin_rank?: number; rank_priority?: number; display_order?: number }): number {
+  const starVal = typeof item.star_rank === "number" ? item.star_rank : (item.is_starred ? 100 : 0);
+  const adminVal = typeof item.admin_rank === "number" ? item.admin_rank : (item.rank_priority || 0);
+  const calculated = (starVal * 1000) + adminVal;
+  return Math.max(calculated, item.display_order || 0);
+}
 
-    const rankA = typeof a.rank_priority === "number" ? a.rank_priority : 50;
-    const rankB = typeof b.rank_priority === "number" ? b.rank_priority : 50;
-    return rankB - rankA;
+function sortByRankAndStar<T extends { is_starred?: boolean; star_rank?: number; admin_rank?: number; rank_priority?: number; display_order?: number }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    const scoreA = computeDisplayOrder(a);
+    const scoreB = computeDisplayOrder(b);
+    return scoreB - scoreA;
   });
 }
 
@@ -1124,5 +1127,30 @@ export const apiService = {
       }
     }
     return true;
+  },
+
+  async logRankingChange(log: { admin_id?: string; entity_type: 'flight' | 'hotel' | 'tour' | 'visa' | 'booking'; entity_id: string; old_rank: number; new_rank: number; old_visibility: boolean; new_visibility: boolean }): Promise<void> {
+    const newLog = {
+      ...log,
+      id: `rl-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      created_at: new Date().toISOString(),
+    };
+
+    if (typeof window !== "undefined") {
+      try {
+        const existing = JSON.parse(localStorage.getItem("isbah_ranking_logs") || "[]");
+        localStorage.setItem("isbah_ranking_logs", JSON.stringify([newLog, ...existing]));
+        window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+      } catch {}
+    }
+
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getClient();
+        await supabase.from("ranking_logs").insert([newLog]);
+      } catch (err) {
+        console.warn("Error inserting ranking_log into Supabase", err);
+      }
+    }
   },
 };

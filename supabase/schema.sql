@@ -489,3 +489,55 @@ CREATE POLICY "Admins insert audit_logs" ON public.audit_logs FOR INSERT WITH CH
 -- USER 2FA
 DROP POLICY IF EXISTS "Users manage own 2FA" ON public.user_2fa;
 CREATE POLICY "Users manage own 2FA" ON public.user_2fa FOR ALL USING ( (select auth.uid()) = user_id OR public.is_admin() );
+
+-- =========================================================
+-- UPDATED RANKING & HOMEPAGE VISIBILITY COLUMNS
+-- =========================================================
+ALTER TABLE public.flights 
+ADD COLUMN IF NOT EXISTS show_on_homepage BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS star_rank INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS admin_rank INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
+
+ALTER TABLE public.hotels 
+ADD COLUMN IF NOT EXISTS show_on_homepage BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS star_rank INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS admin_rank INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
+
+ALTER TABLE public.tours 
+ADD COLUMN IF NOT EXISTS show_on_homepage BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS star_rank INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS admin_rank INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
+
+ALTER TABLE public.visas 
+ADD COLUMN IF NOT EXISTS show_on_homepage BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS star_rank INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS admin_rank INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
+
+ALTER TABLE public.bookings 
+ADD COLUMN IF NOT EXISTS show_on_homepage BOOLEAN DEFAULT FALSE,
+ADD COLUMN IF NOT EXISTS star_rank INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS admin_rank INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
+
+-- =========================================================
+-- RANKING LOGS (AUDIT TRAIL) TABLE
+-- =========================================================
+CREATE TABLE IF NOT EXISTS public.ranking_logs (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  admin_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+  entity_type TEXT NOT NULL CHECK (entity_type IN ('flight', 'hotel', 'tour', 'visa', 'booking')),
+  entity_id TEXT NOT NULL,
+  old_rank INTEGER,
+  new_rank INTEGER,
+  old_visibility BOOLEAN,
+  new_visibility BOOLEAN,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.ranking_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Admins manage ranking_logs" ON public.ranking_logs;
+CREATE POLICY "Admins manage ranking_logs" ON public.ranking_logs FOR ALL USING (public.is_admin());
