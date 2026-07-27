@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { ShieldAlert, Search, Filter, RefreshCw, Calendar, UserCheck, Database } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ShieldAlert, Search, Filter, RefreshCw, Calendar, UserCheck, Database, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -18,56 +18,55 @@ interface AuditLog {
 const mockAuditLogs: AuditLog[] = [
   {
     id: "aud-901",
-    admin_email: "isbah41.com",
-    action: "UPDATE_HOTEL_NEARBY",
+    admin_email: "admin@isbahtravels.com",
+    action: "UPDATE_RANKING",
     table_name: "hotels",
     record_id: "ht-101",
-    created_at: "2026-07-25T12:04:30Z",
-    details: "Auto-collected Google Places 1km landmarks for Sea Pearl Beach Resort.",
+    created_at: "2026-07-27T12:04:30Z",
+    details: "Starred hotel Sea Pearl Resort (Star Rank: 100, Admin Rank: 85, Display Order: 100,085).",
   },
   {
     id: "aud-902",
-    admin_email: "isbah41.com",
+    admin_email: "admin@isbahtravels.com",
     action: "CONFIRM_BOOKING",
     table_name: "bookings",
     record_id: "bk-1001",
-    created_at: "2026-07-25T11:45:10Z",
+    created_at: "2026-07-27T11:45:10Z",
     details: "Updated payment_status to 'paid' and generated PDF e-ticket receipt.",
-  },
-  {
-    id: "aud-903",
-    admin_email: "isbah41.com",
-    action: "CREATE_FLIGHT",
-    table_name: "flights",
-    record_id: "fl-302",
-    created_at: "2026-07-25T10:12:00Z",
-    details: "Added Biman Bangladesh flight BG-433 Dhaka to Cox's Bazar.",
-  },
-  {
-    id: "aud-904",
-    admin_email: "isbah41.com",
-    action: "TOGGLE_USER_ROLE",
-    table_name: "profiles",
-    record_id: "usr-441",
-    created_at: "2026-07-25T09:30:15Z",
-    details: "Updated user role for Mohammad Rahman to 'admin'.",
-  },
-  {
-    id: "aud-905",
-    admin_email: "isbah41.com",
-    action: "DELETE_REVIEW",
-    table_name: "hotel_reviews",
-    record_id: "rev-501",
-    created_at: "2026-07-25T08:15:00Z",
-    details: "Moderated offensive hotel review.",
   },
 ];
 
 export default function AdminAuditLogsPage() {
   const [search, setSearch] = useState("");
   const [tableFilter, setTableFilter] = useState("all");
+  const [allLogs, setAllLogs] = useState<AuditLog[]>(mockAuditLogs);
 
-  const filteredLogs = mockAuditLogs.filter((log) => {
+  const loadLogs = () => {
+    try {
+      const storedRankingLogs = JSON.parse(localStorage.getItem("isbah_ranking_logs") || "[]");
+      const convertedRankingLogs: AuditLog[] = storedRankingLogs.map((rl: any) => ({
+        id: rl.id,
+        admin_email: rl.admin_id || "admin@isbahtravels.com",
+        action: `UPDATE_RANKING_${rl.entity_type.toUpperCase()}`,
+        table_name: `${rl.entity_type}s`,
+        record_id: rl.entity_id,
+        created_at: rl.created_at,
+        details: `Updated ${rl.entity_type} ID ${rl.entity_id.slice(0, 12)}: Rank Priority changed from ${rl.old_rank} to ${rl.new_rank}. Homepage Visibility: ${rl.new_visibility ? "Visible" : "Hidden"}.`,
+      }));
+      const combined = [...convertedRankingLogs, ...mockAuditLogs].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setAllLogs(combined);
+    } catch {
+      setAllLogs(mockAuditLogs);
+    }
+  };
+
+  useEffect(() => {
+    loadLogs();
+    window.addEventListener("isbah_data_updated", loadLogs);
+    return () => window.removeEventListener("isbah_data_updated", loadLogs);
+  }, []);
+
+  const filteredLogs = allLogs.filter((log) => {
     const matchesSearch =
       log.action.toLowerCase().includes(search.toLowerCase()) ||
       log.admin_email.toLowerCase().includes(search.toLowerCase()) ||

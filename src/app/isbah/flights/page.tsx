@@ -74,10 +74,112 @@ export default function AdminFlightsPage() {
     setIsModalOpen(true);
   };
 
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkRankInput, setBulkRankInput] = useState<number>(80);
+  const [bulkDateInput, setBulkDateInput] = useState<string>(new Date().toISOString().split("T")[0]);
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.length === flights.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(flights.map(f => f.id));
+    }
+  };
+
   const handleToggleStarFlight = async (flight: Flight) => {
-    const updated = { ...flight, is_starred: !flight.is_starred };
+    const isStarred = !flight.is_starred;
+    const starRank = isStarred ? 100 : 0;
+    const updated = {
+      ...flight,
+      is_starred: isStarred,
+      star_rank: starRank,
+      display_order: (starRank * 1000) + (flight.admin_rank || flight.rank_priority || 50),
+    };
     await apiService.saveFlight(updated);
+    await apiService.logRankingChange({
+      entity_type: "flight",
+      entity_id: flight.id,
+      old_rank: flight.star_rank || (flight.is_starred ? 100 : 0),
+      new_rank: starRank,
+      old_visibility: flight.show_on_homepage !== false,
+      new_visibility: flight.show_on_homepage !== false,
+    });
     setFlights(prev => prev.map(f => f.id === flight.id ? updated : f));
+    queryClient.invalidateQueries({ queryKey: ["flights"] });
+  };
+
+  const handleInlineRankChange = async (flight: Flight, newAdminRank: number) => {
+    const starRank = flight.star_rank ?? (flight.is_starred ? 100 : 0);
+    const updated = {
+      ...flight,
+      admin_rank: newAdminRank,
+      rank_priority: newAdminRank,
+      display_order: (starRank * 1000) + newAdminRank,
+    };
+    await apiService.saveFlight(updated);
+    await apiService.logRankingChange({
+      entity_type: "flight",
+      entity_id: flight.id,
+      old_rank: flight.admin_rank || flight.rank_priority || 50,
+      new_rank: newAdminRank,
+      old_visibility: flight.show_on_homepage !== false,
+      new_visibility: flight.show_on_homepage !== false,
+    });
+    setFlights(prev => prev.map(f => f.id === flight.id ? updated : f));
+    queryClient.invalidateQueries({ queryKey: ["flights"] });
+  };
+
+  const handleInlineHomepageToggle = async (flight: Flight, show: boolean) => {
+    const updated = { ...flight, show_on_homepage: show };
+    await apiService.saveFlight(updated);
+    await apiService.logRankingChange({
+      entity_type: "flight",
+      entity_id: flight.id,
+      old_rank: flight.admin_rank || 50,
+      new_rank: flight.admin_rank || 50,
+      old_visibility: flight.show_on_homepage !== false,
+      new_visibility: show,
+    });
+    setFlights(prev => prev.map(f => f.id === flight.id ? updated : f));
+    queryClient.invalidateQueries({ queryKey: ["flights"] });
+  };
+
+  const handleBulkSetRank = async () => {
+    if (selectedIds.length === 0) return;
+    for (const id of selectedIds) {
+      const flight = flights.find(f => f.id === id);
+      if (flight) {
+        await handleInlineRankChange(flight, bulkRankInput);
+      }
+    }
+  };
+
+  const handleBulkToggleHomepage = async (show: boolean) => {
+    if (selectedIds.length === 0) return;
+    for (const id of selectedIds) {
+      const flight = flights.find(f => f.id === id);
+      if (flight) {
+        await handleInlineHomepageToggle(flight, show);
+      }
+    }
+  };
+
+  const handleBulkSetDate = async () => {
+    if (selectedIds.length === 0) return;
+    for (const id of selectedIds) {
+      const flight = flights.find(f => f.id === id);
+      if (flight) {
+        const updated = {
+          ...flight,
+          segments: [{ ...flight.segments[0], departure_date: bulkDateInput }],
+        };
+        await apiService.saveFlight(updated);
+      }
+    }
     queryClient.invalidateQueries({ queryKey: ["flights"] });
   };
 
@@ -137,55 +239,137 @@ export default function AdminFlightsPage() {
         </Button>
       </div>
 
+      {/* Bulk Actions Bar */}
+      {selectedIds.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-emerald-950 text-white rounded-2xl shadow-lg border border-emerald-800">
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <span className="bg-emerald-700 px-2 py-0.5 rounded-full text-white">{selectedIds.length} Selected</span>
+            <span>Bulk Ranking & Visibility Operations</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <div className="flex items-center gap-1 bg-emerald-900/60 p-1.5 rounded-xl border border-emerald-800">
+              <span className="text-[10px] text-slate-300 font-bold uppercase">Rank:</span>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={bulkRankInput}
+                onChange={(e) => setBulkRankInput(Number(e.target.value))}
+                className="w-14 bg-emerald-950 border border-emerald-700 rounded px-1.5 py-0.5 text-center font-bold text-white outline-none"
+              />
+              <Button size="sm" onClick={handleBulkSetRank} className="h-7 text-[11px] bg-emerald-600 hover:bg-emerald-500 font-bold">
+                Apply Rank
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <Button size="sm" onClick={() => handleBulkToggleHomepage(true)} className="h-7 text-[11px] bg-blue-600 hover:bg-blue-500 font-bold">
+                Show Homepage
+              </Button>
+              <Button size="sm" onClick={() => handleBulkToggleHomepage(false)} className="h-7 text-[11px] bg-slate-800 hover:bg-slate-700 font-bold">
+                Hide Homepage
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-1 bg-emerald-900/60 p-1.5 rounded-xl border border-emerald-800">
+              <input
+                type="date"
+                value={bulkDateInput}
+                onChange={(e) => setBulkDateInput(e.target.value)}
+                className="bg-emerald-950 border border-emerald-700 rounded px-1.5 py-0.5 font-bold text-white text-[11px] outline-none"
+              />
+              <Button size="sm" onClick={handleBulkSetDate} className="h-7 text-[11px] bg-emerald-600 hover:bg-emerald-500 font-bold">
+                Set Date
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Flight Table */}
       <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-extrabold uppercase tracking-wider">
               <tr>
+                <th className="p-4 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={flights.length > 0 && selectedIds.length === flights.length}
+                    onChange={handleSelectAll}
+                    className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                </th>
                 <th className="p-4">Airline & Flight #</th>
-                <th className="p-4">Route</th>
-                <th className="p-4">Class</th>
+                <th className="p-4">Route & Date</th>
+                <th className="p-4">Rank Priority</th>
+                <th className="p-4">Homepage</th>
                 <th className="p-4">Price</th>
-                <th className="p-4">Seats Left</th>
                 <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-semibold text-slate-800">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500">Loading real-time flights inventory...</td>
+                  <td colSpan={7} className="p-8 text-center text-slate-500">Loading real-time flights inventory...</td>
                 </tr>
               ) : flights.map((flight) => (
-                <tr key={flight.id} className="hover:bg-slate-50">
+                <tr key={flight.id} className={`hover:bg-slate-50 ${selectedIds.includes(flight.id) ? "bg-emerald-50/40" : ""}`}>
+                  <td className="p-4 text-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(flight.id)}
+                      onChange={() => handleToggleSelect(flight.id)}
+                      className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                  </td>
                   <td className="p-4 font-bold text-slate-900">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleToggleStarFlight(flight)}
-                        title="Star / Favorite Flight"
+                        title="Star / Favorite Flight (Sets Star Rank to 100)"
                         className="p-1 rounded-md hover:bg-amber-50"
                       >
                         <Star className={`h-4 w-4 ${flight.is_starred ? "fill-amber-400 text-amber-500" : "text-slate-300"}`} />
                       </button>
                       <div>
                         <span>{flight.airline} ({flight.flight_number})</span>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[10px] text-slate-400 font-bold">Rank: #{flight.rank_priority || 50}</span>
-                          {flight.show_on_homepage !== false && (
-                            <span className="text-[9px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded px-1">Homepage</span>
-                          )}
-                        </div>
+                        <div className="text-[10px] text-slate-400 font-mono">ID: {flight.id.slice(0, 10)}</div>
                       </div>
                     </div>
                   </td>
                   <td className="p-4">
-                    {flight.segments[0]?.from} ➔ {flight.segments[0]?.to}
+                    <div>{flight.segments[0]?.from} ➔ {flight.segments[0]?.to}</div>
+                    <div className="text-[10px] font-bold text-emerald-700 mt-0.5">{flight.segments[0]?.departure_date || "Any Date"}</div>
                   </td>
-                  <td className="p-4 capitalize">
-                    <Badge variant="outline" className="font-bold">{flight.class}</Badge>
+                  <td className="p-4">
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={flight.admin_rank ?? flight.rank_priority ?? 50}
+                        onChange={(e) => handleInlineRankChange(flight, Number(e.target.value))}
+                        className="w-14 rounded-lg border border-slate-200 p-1 font-bold text-center text-xs outline-none focus:border-emerald-500"
+                      />
+                      <span className="text-[10px] text-slate-400 font-bold">Score: {flight.display_order || ((flight.is_starred ? 100 : 0) * 1000 + (flight.admin_rank || 50))}</span>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <label className="inline-flex items-center cursor-pointer gap-1.5">
+                      <input
+                        type="checkbox"
+                        checked={flight.show_on_homepage !== false}
+                        onChange={(e) => handleInlineHomepageToggle(flight, e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${flight.show_on_homepage !== false ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>
+                        {flight.show_on_homepage !== false ? "Visible" : "Hidden"}
+                      </span>
+                    </label>
                   </td>
                   <td className="p-4 font-black text-slate-900">{formatBDT(flight.price)}</td>
-                  <td className="p-4 text-emerald-700 font-extrabold">{flight.available_seats} Seats</td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button onClick={() => handleOpenEditModal(flight)} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg">

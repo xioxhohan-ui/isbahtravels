@@ -55,7 +55,10 @@ export interface Flight {
   stops?: number;
   show_on_homepage?: boolean;
   is_starred?: boolean;
+  star_rank?: number;
+  admin_rank?: number;
   rank_priority?: number;
+  display_order?: number;
   admin_created?: string;
   created_at?: string;
   updated_at?: string;
@@ -100,7 +103,10 @@ export interface Hotel {
   min_price?: number;
   show_on_homepage?: boolean;
   is_starred?: boolean;
+  star_rank?: number;
+  admin_rank?: number;
   rank_priority?: number;
+  display_order?: number;
   admin_created?: string;
   created_at?: string;
   updated_at?: string;
@@ -173,7 +179,10 @@ export interface Tour {
   reviews_count?: number;
   show_on_homepage?: boolean;
   is_starred?: boolean;
+  star_rank?: number;
+  admin_rank?: number;
   rank_priority?: number;
+  display_order?: number;
   admin_created?: string;
   created_at?: string;
   updated_at?: string;
@@ -209,7 +218,10 @@ export interface Visa {
   contact_info: ContactInfo;
   show_on_homepage?: boolean;
   is_starred?: boolean;
+  star_rank?: number;
+  admin_rank?: number;
   rank_priority?: number;
+  display_order?: number;
   admin_created?: string;
   created_at?: string;
   updated_at?: string;
@@ -228,7 +240,10 @@ export interface Booking {
   booking_status: BookingStatus;
   show_on_homepage?: boolean;
   is_starred?: boolean;
+  star_rank?: number;
+  admin_rank?: number;
   rank_priority?: number;
+  display_order?: number;
   created_at: string;
   updated_at: string;
 }
