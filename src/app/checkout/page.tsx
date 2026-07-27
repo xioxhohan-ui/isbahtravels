@@ -93,7 +93,7 @@ function CheckoutContent() {
     try {
       const booking = await apiService.createBooking({
         user_id: userId || "usr-demo",
-        booking_type: bookingType,
+        booking_type: (bookingType as any),
         reference_id: refId,
         total_price: finalPrice,
         currency: "BDT",
