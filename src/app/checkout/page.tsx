@@ -2,7 +2,11 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { apiService } from "@/lib/services/api";
+import { formatBDT } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { CreditCard, AlertCircle, ShieldCheck, Loader2, CheckCircle2, ShoppingBag } from "lucide-react";
 
 function CheckoutContent() {
