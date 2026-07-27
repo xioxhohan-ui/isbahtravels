@@ -3,6 +3,7 @@ import "./globals.css";
 import Navbar from "@/components/layout/navbar";
 import Footer from "@/components/layout/footer";
 import QueryProvider from "@/components/providers/query-provider";
+import { Analytics } from "@vercel/analytics/next";
 
 // System font stack — no external font download, no render blocking
 // Looks identical to Inter on macOS/iOS (SF Pro), Windows 11 (Segoe UI), Android (Roboto)
@@ -36,6 +37,7 @@ export default function RootLayout({
           <main className="flex-1">{children}</main>
           <Footer />
         </QueryProvider>
+        <Analytics />
       </body>
     </html>
   );
