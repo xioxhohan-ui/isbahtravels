@@ -29,17 +29,26 @@ export default function GoogleMapView({
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm space-y-5">
       
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 font-bold">
+      {/* Header with full responsive flex */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 font-bold shadow-xs">
             <MapPin className="h-5 w-5" />
           </div>
-          <div>
-            <h3 className="font-bold text-slate-900 text-base">{title} Location & Map</h3>
-            {address && <p className="text-xs text-slate-500 font-semibold">{address}</p>}
+          <div className="min-w-0">
+            <h3 className="font-outfit font-black text-slate-900 text-base leading-tight truncate">
+              Location & Map
+            </h3>
+            <p className="text-xs font-semibold text-slate-600 truncate mt-0.5">
+              {title}
+            </p>
+            {address && (
+              <p className="text-[11px] font-medium text-slate-400 line-clamp-2 mt-0.5">
+                {address}
+              </p>
+            )}
           </div>
         </div>
 
@@ -47,16 +56,16 @@ export default function GoogleMapView({
           href={directionsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition-colors"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 transition-colors shrink-0 shadow-xs active:scale-[0.98]"
         >
-          <Navigation className="h-3.5 w-3.5 text-emerald-700" />
+          <Navigation className="h-4 w-4 text-emerald-700" />
           <span>Get Directions</span>
-          <ExternalLink className="h-3 w-3" />
+          <ExternalLink className="h-3.5 w-3.5" />
         </a>
       </div>
 
-      {/* Map Display Box with Animated Overlay Markers */}
-      <div className="relative h-72 w-full overflow-hidden rounded-2xl border border-slate-200 shadow-inner">
+      {/* Map Frame Container */}
+      <div className="relative h-64 sm:h-72 w-full overflow-hidden rounded-2xl border border-slate-200 shadow-inner bg-slate-100">
         <iframe
           title={title}
           src={mapSrc}
@@ -65,45 +74,51 @@ export default function GoogleMapView({
           allowFullScreen
         />
 
-        {/* Floating Animated Drop Markers Badge */}
-        <div className="absolute top-3 right-3 bg-slate-950/80 backdrop-blur-md text-white text-[10px] font-extrabold px-3 py-1.5 rounded-full border border-slate-700 flex items-center gap-1.5 shadow-md">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+        {/* Live Status Badge */}
+        <div className="absolute top-3 left-3 right-3 sm:left-auto max-w-full bg-slate-950/85 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-full border border-slate-700/80 flex items-center justify-between gap-2 shadow-lg">
+          <div className="flex items-center gap-1.5 truncate">
+            <span className="relative flex h-2 w-2 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="truncate">Google Places 1km Radius</span>
+          </div>
+          <span className="bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-400/30 text-[9px] font-extrabold shrink-0">
+            {nearby.length} Places
           </span>
-          <span>Google Places 1km Auto-Collected ({nearby.length} Places)</span>
         </div>
       </div>
 
-      {/* Nearby Places Grid with Animated Drop Effect */}
+      {/* Nearby Landmarks & Attractions List */}
       {nearby.length > 0 && (
-        <div className="space-y-3 pt-2 border-t border-slate-100">
+        <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between">
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-              <Compass className="h-3.5 w-3.5 text-emerald-700" />
+            <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <Compass className="h-4 w-4 text-emerald-700" />
               <span>Nearby Landmarks & Attractions</span>
             </h4>
-            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
-              Live Radius 1 km
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/60 shrink-0">
+              Radius 1 km
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="flex flex-col gap-2.5">
             {nearby.map((place, idx) => (
               <div
                 key={idx}
-                className="flex items-center justify-between rounded-2xl bg-slate-50 p-3 border border-slate-200/80 text-xs hover:bg-slate-100 transition-colors shadow-2xs animate-scale-in"
+                className="flex items-center justify-between rounded-2xl bg-slate-50/80 p-3 border border-slate-200/80 text-xs hover:bg-slate-100/80 transition-all shadow-2xs group"
               >
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white border border-slate-200 text-emerald-700 font-extrabold text-[10px] shadow-2xs">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white border border-slate-200 text-base shadow-2xs group-hover:scale-105 transition-transform">
                     📍
                   </div>
-                  <div>
-                    <p className="font-bold text-slate-900">{place.name}</p>
-                    <span className="text-[10px] font-medium text-slate-500">{place.type}</span>
+                  <div className="min-w-0">
+                    <p className="font-bold text-slate-900 truncate leading-tight">{place.name}</p>
+                    <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{place.type}</span>
                   </div>
                 </div>
-                <span className="text-[10px] font-extrabold text-emerald-700 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-2xs">
+
+                <span className="text-[10px] font-black text-emerald-700 bg-white px-2.5 py-1 rounded-xl border border-slate-200 shadow-2xs shrink-0 ml-2">
                   {place.distance}
                 </span>
               </div>
