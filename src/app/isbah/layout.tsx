@@ -27,12 +27,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         apiService.getTourInquiries(),
       ]);
 
-      const pendingBks = allBookings.filter(b => b.payment_status === "pending" || b.booking_status === "pending");
-      const pendingVisaInqs = visaInqs.filter(i => i.status === "new");
-      const pendingTourInqs = tourInqs.filter(i => i.status === "new");
+      const unreadBks: string[] = JSON.parse(localStorage.getItem("isbah_unread_bookings") || "[]");
+      const unreadInqs: string[] = JSON.parse(localStorage.getItem("isbah_unread_inquiries") || "[]");
+      const allReadTimestamp = Number(localStorage.getItem("isbah_all_read_time") || "0");
 
-      const bCount = pendingBks.length > 0 ? pendingBks.length : allBookings.length;
-      const iCount = pendingVisaInqs.length + pendingTourInqs.length;
+      let pendingBks = allBookings.filter(b => b.payment_status === "pending" || b.booking_status === "pending");
+      let pendingVisaInqs = visaInqs.filter(i => i.status === "new");
+      let pendingTourInqs = tourInqs.filter(i => i.status === "new");
+
+      if (allReadTimestamp > 0) {
+        pendingBks = pendingBks.filter(b => new Date(b.created_at).getTime() > allReadTimestamp || unreadBks.includes(b.id));
+        pendingVisaInqs = pendingVisaInqs.filter(i => new Date(i.created_at).getTime() > allReadTimestamp || unreadInqs.includes(i.id));
+        pendingTourInqs = pendingTourInqs.filter(i => new Date(i.created_at).getTime() > allReadTimestamp || unreadInqs.includes(i.id));
+      }
+
+      const bCount = unreadBks.length > 0 ? unreadBks.length : pendingBks.length;
+      const iCount = unreadInqs.length > 0 ? unreadInqs.length : (pendingVisaInqs.length + pendingTourInqs.length);
 
       setBookingsCount(bCount);
       setInquiriesCount(iCount);
@@ -73,6 +83,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     } catch (err) {
       console.warn("Failed to load admin notifications", err);
     }
+  };
+
+  const handleMarkAllNotificationsRead = () => {
+    try {
+      localStorage.setItem("isbah_unread_bookings", JSON.stringify([]));
+      localStorage.setItem("isbah_unread_inquiries", JSON.stringify([]));
+      localStorage.setItem("isbah_all_read_time", Date.now().toString());
+      setBookingsCount(0);
+      setInquiriesCount(0);
+      setRecentNotifications([]);
+      setShowNotificationsDropdown(false);
+      window.dispatchEvent(new CustomEvent("isbah_data_updated"));
+    } catch {}
   };
 
   useEffect(() => {
@@ -175,15 +198,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <Bell className="h-3.5 w-3.5 text-rose-600" />
                     <h4 className="font-bold text-xs text-slate-900">Live Customer Alerts</h4>
                   </div>
-                  <span className="text-[10px] font-black bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full">
-                    {totalAlertsCount} Pending
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {totalAlertsCount > 0 && (
+                      <button
+                        onClick={handleMarkAllNotificationsRead}
+                        className="text-[10px] font-extrabold text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-lg transition-colors flex items-center gap-1"
+                        title="Clear all active notifications"
+                      >
+                        <CheckCircle2 className="h-3 w-3" />
+                        <span>Mark All Read</span>
+                      </button>
+                    )}
+                    <span className="text-[10px] font-black bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full">
+                      {totalAlertsCount} Pending
+                    </span>
+                  </div>
                 </div>
 
                 <div className="space-y-1.5 max-h-64 overflow-y-auto">
                   {recentNotifications.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-slate-500 font-semibold">
-                      No pending notifications right now.
+                    <div className="p-4 text-center text-xs text-slate-500 font-semibold space-y-1">
+                      <p>All notifications are up to date! 🎉</p>
+                      <p className="text-[10px] text-slate-400">No new pending alerts.</p>
                     </div>
                   ) : (
                     recentNotifications.map((item, idx) => (
@@ -206,20 +242,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   )}
                 </div>
 
-                <div className="pt-1 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                  <button
+                    onClick={handleMarkAllNotificationsRead}
+                    className="font-bold text-blue-600 hover:underline flex items-center gap-1"
+                  >
+                    <CheckCircle2 className="h-3 w-3 text-blue-600" />
+                    <span>Clear All Alerts</span>
+                  </button>
                   <Link
                     href="/isbah/bookings"
                     onClick={() => setShowNotificationsDropdown(false)}
                     className="font-bold text-emerald-700 hover:underline"
                   >
-                    View All Bookings
-                  </Link>
-                  <Link
-                    href="/isbah/inquiries"
-                    onClick={() => setShowNotificationsDropdown(false)}
-                    className="font-bold text-amber-700 hover:underline"
-                  >
-                    View Inquiries
+                    View Bookings
                   </Link>
                 </div>
               </div>
